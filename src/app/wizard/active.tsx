@@ -416,7 +416,7 @@ export default function ActiveDraftScreen() {
         }).start();
       },
       onPanResponderMove: (_, gestureState) => {
-        const collapsedHeight = isUserTurnRef.current ? 340 : 180;
+        const collapsedHeight = 80;
         const fullHeight = SCREEN_HEIGHT * 0.92;
         let newHeight = gestureStartHeight.current - gestureState.dy;
 
@@ -440,7 +440,7 @@ export default function ActiveDraftScreen() {
           tension: 40,
         }).start();
 
-        const collapsedHeight = isUserTurnRef.current ? 340 : 180;
+        const collapsedHeight = 80;
         const fullHeight = SCREEN_HEIGHT * 0.92;
         const midPoint = (collapsedHeight + fullHeight) / 2;
 
@@ -552,12 +552,7 @@ export default function ActiveDraftScreen() {
 
   // 5. Bottom sheet height animations
   useEffect(() => {
-    let targetHeight = 180;
-    if (sheetMode === 'collapsed') {
-      targetHeight = isUserTurn ? 340 : 180;
-    } else {
-      targetHeight = SCREEN_HEIGHT * 0.92;
-    }
+    const targetHeight = sheetMode === 'collapsed' ? 80 : SCREEN_HEIGHT * 0.92;
 
     if (Math.abs(lastSheetHeight.current - targetHeight) > 10) {
       Animated.spring(sheetHeightAnim, {
@@ -842,48 +837,7 @@ export default function ActiveDraftScreen() {
             </View>
           </View>
 
-          {/* COLLAPSED SUGGESTIONS CONTAINER (SHOW TOP 5 PICKS) */}
-          {sheetMode === 'collapsed' && isUserTurn && suggestedPlayers.length > 0 && (
-            <View style={styles.collapsedSuggestionsContainer}>
-              {suggestedPlayers.slice(0, 5).map((player, idx) => {
-                const isStarred = starredIds.includes(player.rank);
-                const expertPercent = idx === 0 ? '86%' : idx === 1 ? '14%' : '0%';
-                return (
-                  <View key={player.rank} style={styles.suggestedItem}>
-                    <Image source={{ uri: getPlayerHeadshotUrl(player.name, player.position, player.team) }} style={styles.suggestedHeadshot} />
-                    <View style={styles.suggestedInfo}>
-                      <View style={styles.suggestedHeaderRow}>
-                        <Text style={styles.suggestedName} numberOfLines={1}>{player.name}</Text>
-                        <View style={[styles.posBadge, { borderColor: Colors.positions[player.position] }]}>
-                          <Text style={[styles.posBadgeText, { color: Colors.positions[player.position] }]}>{player.posRank}</Text>
-                        </View>
-                      </View>
-                      <Text style={styles.suggestedSub}>{player.team} · Bye {player.bye} · ECR {player.rank}</Text>
-                    </View>
-                    
-                    <View style={styles.suggestedActions}>
-                      <View style={styles.expertCol}>
-                        <Text style={styles.expertVal}>{expertPercent}</Text>
-                        <Text style={styles.expertLbl}>Experts</Text>
-                      </View>
-                      <Pressable style={styles.starBtn} onPress={() => toggleStar(player.rank)}>
-                        <Svg width={16} height={16} viewBox="0 0 24 24" fill={isStarred ? "#fbbf24" : "none"}>
-                          <Path d="M12 17.27L18.18 21L16.54 13.97L22 9.24L14.81 8.62L12 2L9.19 8.62L2 9.24L7.46 13.97L5.82 21L12 17.27Z" stroke={isStarred ? "#fbbf24" : "#94a3b8"} strokeWidth={2} />
-                        </Svg>
-                      </Pressable>
-                      <Pressable 
-                        style={[styles.draftBtn, !isUserTurn && styles.draftBtnDisabled]} 
-                        disabled={!isUserTurn}
-                        onPress={() => handleDraft(player)}
-                      >
-                        <Text style={styles.draftBtnText}>Draft</Text>
-                      </Pressable>
-                    </View>
-                  </View>
-                );
-              })}
-            </View>
-          )}
+
 
           {/* EXPANDED VIEW: TABS & CONTENT */}
           {sheetMode !== 'collapsed' && (
