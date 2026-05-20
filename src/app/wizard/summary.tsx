@@ -11,6 +11,7 @@ import Svg, { Path } from 'react-native-svg';
 export default function DraftSummaryScreen() {
   const router = useRouter();
   
+  const setup = useSnapStore((state) => state.setup);
   const resetDraft = useSnapStore((state) => state.resetDraft);
   const getDraftGrade = useSnapStore((state) => state.getDraftGrade);
   const getUserRoster = useSnapStore((state) => state.getUserRoster);

@@ -84,7 +84,13 @@ export default function ActiveDraftScreen() {
   // Total draft rounds list for background grid
   const totalPicksCount = setup.rounds * setup.leagueSize;
   const draftBoardPicks = useMemo(() => {
-    const picksList = [];
+    const picksList: {
+      pickNumber: number;
+      round: number;
+      teamIndex: number;
+      teamName: string;
+      player: Player | null;
+    }[] = [];
     for (let p = 1; p <= totalPicksCount; p++) {
       const teamIdx = getTeamIndexForPick(p, setup.leagueSize, setup.draftType);
       const teamName = getTeamNameForIndex(teamIdx, setup.userPosition);
@@ -279,7 +285,7 @@ export default function ActiveDraftScreen() {
               const isCurrent = item.pickNumber === currentPick;
               const hasDrafted = item.player !== null;
               const isUser = item.teamIndex === setup.userPosition - 1;
-              const posColor = hasDrafted ? Colors.positions[item.player!.position] : '#4b5563';
+              const posColor = hasDrafted ? Colors.positions[item.player!.position as keyof typeof Colors.positions] : '#4b5563';
 
               return (
                 <View style={[

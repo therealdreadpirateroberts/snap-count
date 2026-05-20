@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { StyleSheet, View, Text, TextInput, Pressable, FlatList, Image } from 'react-native';
+import { StyleSheet, View, Text, TextInput, Pressable, FlatList, Image, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useSnapStore } from '@/store/useSnapStore';
