@@ -368,13 +368,9 @@ export default function ActiveDraftScreen() {
   const isUserTurnRef = useRef(isUserTurn);
   isUserTurnRef.current = isUserTurn;
 
-  const activeTransitionModeRef = useRef(sheetMode);
-  activeTransitionModeRef.current = sheetMode;
-
   // Bottom Sheet Swipe Dragging (PanResponder) Setup
   const lastSheetHeight = useRef(200);
   const gestureStartHeight = useRef(200);
-  const hasTriggeredRef = useRef(false);
 
   useEffect(() => {
     const listener = sheetHeightAnim.addListener(({ value }) => {
@@ -389,44 +385,84 @@ export default function ActiveDraftScreen() {
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
       onMoveShouldSetPanResponder: (_, gestureState) => {
-        return Math.abs(gestureState.dy) > 5;
+        // Only trigger if movement is primarily vertical
+        return Math.abs(gestureState.dy) > 5 && Math.abs(gestureState.dy) > Math.abs(gestureState.dx);
       },
       onPanResponderGrant: () => {
         sheetHeightAnim.stopAnimation();
         gestureStartHeight.current = lastSheetHeight.current;
-        hasTriggeredRef.current = false;
-        activeTransitionModeRef.current = sheetModeRef.current;
-      },
-      onPanResponderMove: (_, gestureState) => {
-        if (hasTriggeredRef.current) return;
 
-        const currentMode = sheetModeRef.current;
-
-        // Instantly transition and snap upon detecting vertical swipe movement
-        if (gestureState.dy > 15 && currentMode !== 'collapsed') {
-          hasTriggeredRef.current = true;
-          activeTransitionModeRef.current = 'collapsed';
-          setSheetMode('collapsed');
-        } else if (gestureState.dy < -15 && currentMode !== 'full') {
-          hasTriggeredRef.current = true;
-          activeTransitionModeRef.current = 'full';
-          setSheetMode('full');
-        }
-      },
-      onPanResponderRelease: () => {
-        // Enforce smooth alignment to whichever sheetMode is active upon touch release
-        const collapsedHeight = isUserTurnRef.current ? 340 : 180;
-        const fullHeight = SCREEN_HEIGHT * 0.92;
-        
-        // Use the active/intended transition mode if we triggered one, otherwise fall back to current state
-        const targetMode = hasTriggeredRef.current ? activeTransitionModeRef.current : sheetModeRef.current;
-        const targetHeight = targetMode === 'collapsed' ? collapsedHeight : fullHeight;
-
-        Animated.spring(sheetHeightAnim, {
-          toValue: targetHeight,
+        // Visual drag handle scale micro-interaction
+        Animated.spring(dragHandleActiveAnim, {
+          toValue: 1,
           useNativeDriver: false,
           friction: 8,
           tension: 40,
+        }).start();
+      },
+      onPanResponderMove: (_, gestureState) => {
+        const collapsedHeight = isUserTurnRef.current ? 340 : 180;
+        const fullHeight = SCREEN_HEIGHT * 0.92;
+        let newHeight = gestureStartHeight.current - gestureState.dy;
+
+        // Apply high-fidelity rubber-band resistance when dragging beyond boundaries
+        if (newHeight > fullHeight) {
+          const overflow = newHeight - fullHeight;
+          newHeight = fullHeight + overflow * 0.25; // 25% sensitivity beyond max
+        } else if (newHeight < collapsedHeight) {
+          const underflow = collapsedHeight - newHeight;
+          newHeight = collapsedHeight - underflow * 0.25; // 25% sensitivity beyond min
+        }
+
+        sheetHeightAnim.setValue(newHeight);
+      },
+      onPanResponderRelease: (_, gestureState) => {
+        // Return drag handle to original state
+        Animated.spring(dragHandleActiveAnim, {
+          toValue: 0,
+          useNativeDriver: false,
+          friction: 8,
+          tension: 40,
+        }).start();
+
+        const collapsedHeight = isUserTurnRef.current ? 340 : 180;
+        const fullHeight = SCREEN_HEIGHT * 0.92;
+        const midPoint = (collapsedHeight + fullHeight) / 2;
+
+        const currentHeight = lastSheetHeight.current;
+        let targetMode = sheetModeRef.current;
+
+        // Premium physics snap calculations based on finger momentum/velocity and position
+        const vy = gestureState.vy;
+        const velocityThreshold = 0.35; // Swipe speed threshold in px/ms
+
+        if (Math.abs(vy) > velocityThreshold) {
+          // Flick detection
+          if (vy < 0) {
+            targetMode = 'full'; // Swipe up expands
+          } else {
+            targetMode = 'collapsed'; // Swipe down collapses
+          }
+        } else {
+          // Slow drag - snap based on proximity to midpoint
+          if (currentHeight > midPoint) {
+            targetMode = 'full';
+          } else {
+            targetMode = 'collapsed';
+          }
+        }
+
+        // Synchronize state
+        setSheetMode(targetMode);
+
+        const targetHeight = targetMode === 'collapsed' ? collapsedHeight : fullHeight;
+
+        // Premium damped snap animation
+        Animated.spring(sheetHeightAnim, {
+          toValue: targetHeight,
+          useNativeDriver: false,
+          bounciness: 5,
+          speed: 12,
         }).start();
       }
     })
@@ -762,7 +798,14 @@ export default function ActiveDraftScreen() {
           {/* Drag Handle Area */}
           <View {...panResponder.panHandlers} style={styles.dragHandleContainer}>
             <Pressable onPress={handleHandleTap} style={styles.dragHandleHitbox}>
-              <View style={styles.dragHandle} />
+              <Animated.View style={[
+                styles.dragHandle, 
+                { 
+                  width: handleWidth, 
+                  opacity: handleOpacity, 
+                  transform: [{ scale: handleScale }] 
+                }
+              ]} />
             </Pressable>
           </View>
 
@@ -1323,12 +1366,18 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     backgroundColor: Colors.surface,
-    borderTopLeftRadius: 18,
-    borderTopRightRadius: 18,
-    borderTopWidth: 2,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    borderTopWidth: 1.5,
     borderTopColor: Colors.coltsNavyLight,
     zIndex: 100,
     paddingHorizontal: Spacing.three,
+    // Soft elegant shadow glow overlay
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: -6 },
+    shadowOpacity: 0.45,
+    shadowRadius: 16,
+    elevation: 24,
   },
   dragHandleContainer: {
     width: '100%',
