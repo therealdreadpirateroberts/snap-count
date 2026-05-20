@@ -364,6 +364,7 @@ export default function ActiveDraftScreen() {
   // Bottom Sheet Swipe Dragging (PanResponder) Setup
   const lastSheetHeight = useRef(200);
   const gestureStartHeight = useRef(200);
+  const hasTriggeredRef = useRef(false);
 
   useEffect(() => {
     const listener = sheetHeightAnim.addListener(({ value }) => {
@@ -383,43 +384,25 @@ export default function ActiveDraftScreen() {
       onPanResponderGrant: () => {
         sheetHeightAnim.stopAnimation();
         gestureStartHeight.current = lastSheetHeight.current;
+        hasTriggeredRef.current = false;
       },
       onPanResponderMove: (_, gestureState) => {
-        const newHeight = gestureStartHeight.current - gestureState.dy;
-        const minHeight = isUserTurn ? 300 : 160;
-        const maxHeight = SCREEN_HEIGHT * 0.95;
-        if (newHeight >= minHeight && newHeight <= maxHeight) {
-          sheetHeightAnim.setValue(newHeight);
+        if (hasTriggeredRef.current) return;
+
+        // Instantly transition and snap upon detecting vertical swipe movement
+        if (gestureState.dy > 15 && sheetMode !== 'collapsed') {
+          hasTriggeredRef.current = true;
+          setSheetMode('collapsed');
+        } else if (gestureState.dy < -15 && sheetMode !== 'full') {
+          hasTriggeredRef.current = true;
+          setSheetMode('full');
         }
       },
-      onPanResponderRelease: (_, gestureState) => {
-        const currentHeight = gestureStartHeight.current - gestureState.dy;
+      onPanResponderRelease: () => {
+        // Enforce smooth alignment to whichever sheetMode is active upon touch release
         const collapsedHeight = isUserTurn ? 340 : 180;
         const fullHeight = SCREEN_HEIGHT * 0.92;
-
-        let targetHeight = collapsedHeight;
-        let targetMode: 'collapsed' | 'full' = 'collapsed';
-
-        // Direct snap behavior: swipe up goes to full height, swipe down goes to collapsed height.
-        // For static releases, compare distance to the midpoint.
-        if (gestureState.vy < -0.3) {
-          targetHeight = fullHeight;
-          targetMode = 'full';
-        } else if (gestureState.vy > 0.3) {
-          targetHeight = collapsedHeight;
-          targetMode = 'collapsed';
-        } else {
-          const midpoint = (collapsedHeight + fullHeight) / 2;
-          if (currentHeight > midpoint) {
-            targetHeight = fullHeight;
-            targetMode = 'full';
-          } else {
-            targetHeight = collapsedHeight;
-            targetMode = 'collapsed';
-          }
-        }
-
-        setSheetMode(targetMode);
+        const targetHeight = sheetMode === 'collapsed' ? collapsedHeight : fullHeight;
 
         Animated.spring(sheetHeightAnim, {
           toValue: targetHeight,
