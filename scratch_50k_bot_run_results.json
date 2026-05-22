@@ -1,0 +1,12 @@
+{
+  "totalDrafts": 50000,
+  "successfulDrafts": 50000,
+  "stateViolations": 0,
+  "contrastViolations": 0,
+  "touchTargetViolations": 0,
+  "opaqueBackdropViolations": 500,
+  "totalPicksSimulated": 11416768,
+  "startTime": 1779379843985,
+  "violationsLog": [],
+  "endTime": 1779379846355
+}

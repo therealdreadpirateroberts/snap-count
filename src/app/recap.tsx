@@ -8,7 +8,7 @@ import BackgroundTexture from '@/components/BackgroundTexture';
 import AppHeader from '@/components/AppHeader';
 import AppTabBar from '@/components/AppTabBar';
 import * as Haptics from 'expo-haptics';
-import Svg, { Path, Circle, G, Rect } from 'react-native-svg';
+import Svg, { Path, Circle, G, Rect, Defs, RadialGradient, Stop } from 'react-native-svg';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 
 interface PickInfo {
@@ -237,9 +237,38 @@ function RecapContent() {
                   
                   {/* Top half: Top 3 Picks in 1970s Baseball Card style */}
                   <View style={styles.cardTopHalf}>
-                    {/* Grade in top right corner in white text */}
+                    {/* Polished athletic gold radial medal grade indicator */}
                     <View style={styles.gradeContainer}>
-                      <Text style={styles.gradeText}>{recap.grade}</Text>
+                      <Svg width={42} height={42} viewBox="0 0 100 100">
+                        <Defs>
+                          {recap.grade.startsWith('A') ? (
+                            <RadialGradient id={`medalGrad-${recap.id}`} cx="50%" cy="50%" r="50%" fx="30%" fy="30%">
+                              <Stop offset="0%" stopColor="#FFF2A3" />
+                              <Stop offset="70%" stopColor="#FFB300" />
+                              <Stop offset="100%" stopColor="#C48200" />
+                            </RadialGradient>
+                          ) : recap.grade.startsWith('B') ? (
+                            <RadialGradient id={`medalGrad-${recap.id}`} cx="50%" cy="50%" r="50%" fx="30%" fy="30%">
+                              <Stop offset="0%" stopColor="#FFF7C2" />
+                              <Stop offset="70%" stopColor="#D4A017" />
+                              <Stop offset="100%" stopColor="#8A6500" />
+                            </RadialGradient>
+                          ) : (
+                            <RadialGradient id={`medalGrad-${recap.id}`} cx="50%" cy="50%" r="50%" fx="30%" fy="30%">
+                              <Stop offset="0%" stopColor="#FFFFFF" />
+                              <Stop offset="70%" stopColor="#9EA7B0" />
+                              <Stop offset="100%" stopColor="#5E6770" />
+                            </RadialGradient>
+                          )}
+                        </Defs>
+                        <Circle cx="50%" cy="50%" r="46" fill={`url(#medalGrad-${recap.id})`} stroke="rgba(255,255,255,0.4)" strokeWidth="3" />
+                        <Circle cx="50%" cy="50%" r="36" fill="none" stroke="rgba(255,255,255,0.25)" strokeWidth="1.5" strokeDasharray="3, 3" />
+                      </Svg>
+                      <View style={styles.medalTextContainer}>
+                        <Text style={[styles.gradeText, { color: recap.grade.startsWith('C') ? '#FFFFFF' : '#000000' }]}>
+                          {recap.grade}
+                        </Text>
+                      </View>
                     </View>
 
                     <View style={styles.baseballContainer}>
@@ -248,8 +277,23 @@ function RecapContent() {
                         const firstName = nameParts[0] || '';
                         const lastName = nameParts.slice(1).join(' ') || '';
 
+                        const teamColors: Record<string, string> = {
+                          SF: '#AA0000',
+                          LV: '#000000',
+                          KC: '#E31837',
+                          DAL: '#869397',
+                          LAR: '#003594',
+                          DET: '#0076B6',
+                          NYJ: '#125740',
+                          ATL: '#A71930',
+                          BUF: '#00338D',
+                          GB: '#203731',
+                        };
+                        const teamColor = teamColors[pick.team] || '#9EA7B0';
+
                         return (
                           <View key={pIdx} style={styles.baseballCard}>
+                            <View style={[styles.teamStripe, { backgroundColor: teamColor }]} />
                             <View style={styles.baseballCardImageContainer}>
                               <Image 
                                 source={{ uri: pick.image }} 
@@ -436,10 +480,10 @@ function createStyles(Colors: typeof import('@/constants/theme').LightColors, is
     cardContainer: {
       width: 280,
       height: 360,
-      backgroundColor: Colors.surface,
+      backgroundColor: '#1A1D21', // Deep Graphite card background
       borderRadius: 20,
-      borderWidth: 1,
-      borderColor: Colors.coltsNavyLight,
+      borderWidth: 3.5, // 3-4px border
+      borderColor: '#6B3615', // Pigskin Brown border
       shadowColor: Colors.shadows.shadowColor,
       shadowOffset: Colors.shadows.shadowOffset,
       shadowOpacity: Colors.shadows.shadowOpacity,
@@ -449,7 +493,7 @@ function createStyles(Colors: typeof import('@/constants/theme').LightColors, is
     },
     cardTopHalf: {
       flex: 1.25,
-      backgroundColor: Colors.coltsNavy,
+      backgroundColor: '#1A1D21', // Deep Graphite top half
       paddingTop: 34,
       paddingHorizontal: 8,
       paddingBottom: 10,
@@ -458,18 +502,26 @@ function createStyles(Colors: typeof import('@/constants/theme').LightColors, is
     },
     gradeContainer: {
       position: 'absolute',
-      top: 10,
-      right: 12,
+      top: 8,
+      right: 8,
       zIndex: 10,
+      width: 42,
+      height: 42,
+    },
+    medalTextContainer: {
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      justifyContent: 'center',
+      alignItems: 'center',
     },
     gradeText: {
       fontFamily: Fonts.headings,
-      fontSize: 20,
-      fontWeight: '900',
-      color: '#FFFFFF',
-      textShadowColor: 'rgba(0, 0, 0, 0.4)',
-      textShadowOffset: { width: 0, height: 1 },
-      textShadowRadius: 3,
+      fontSize: 15,
+      fontWeight: 'bold',
+      color: '#000000', // solid black text overlay for Gold Medal
     },
     baseballContainer: {
       flexDirection: 'row',
@@ -479,10 +531,10 @@ function createStyles(Colors: typeof import('@/constants/theme').LightColors, is
     },
     baseballCard: {
       flex: 1,
-      backgroundColor: isDark ? 'rgba(0, 0, 0, 0.25)' : 'rgba(255, 255, 255, 0.08)',
+      backgroundColor: '#1A1D21', // Deep Graphite
       borderRadius: 10,
       borderWidth: 1.5,
-      borderColor: '#FFFFFF',
+      borderColor: '#6B3615', // framed by brown
       overflow: 'hidden',
       height: 140,
       shadowColor: '#000000',
@@ -491,10 +543,15 @@ function createStyles(Colors: typeof import('@/constants/theme').LightColors, is
       shadowRadius: 3,
       elevation: 2,
     },
+    teamStripe: {
+      height: 4,
+      width: '100%',
+    },
     baseballCardImageContainer: {
       width: '100%',
       height: 72,
-      backgroundColor: isDark ? 'rgba(255, 255, 255, 0.04)' : 'rgba(255, 255, 255, 0.12)',
+      backgroundColor: '#6B3615', // Pigskin Brown leather matting frame
+      padding: 8, // inner padding around photos (brown frame)
       alignItems: 'center',
       justifyContent: 'center',
       borderBottomWidth: 1,

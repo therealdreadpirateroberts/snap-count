@@ -1,110 +1,368 @@
 import React from 'react';
-import { StyleSheet, View, Text, Pressable, ScrollView } from 'react-native';
+import { StyleSheet, View, Text, ScrollView, useWindowDimensions, Platform, Pressable } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { Colors, Fonts, Spacing, MaxContentWidth } from '@/constants/theme';
+import { useColors, Fonts } from '@/constants/theme';
+import AppHeader from '@/components/AppHeader';
+import AppTabBar from '@/components/AppTabBar';
 import BackgroundTexture from '@/components/BackgroundTexture';
-import Svg, { Path } from 'react-native-svg';
+import FeedCard from '@/components/FeedCard';
+import { useAuthStore } from '@/store/useAuthStore';
+import { usePlayerStore } from '@/store/usePlayerStore';
+import OnboardingScreen from '@/components/OnboardingScreen';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
+import Svg, { Defs, RadialGradient, Stop, Circle } from 'react-native-svg';
+import * as Haptics from 'expo-haptics';
 
-export default function LandingScreen() {
+function LandingScreen() {
+  const themedColors = useColors();
   const router = useRouter();
+  const { user } = useAuthStore();
+  const { width } = useWindowDimensions();
+  const isDesktop = Platform.OS === 'web' && width >= 1024;
+
+  const {
+    featuredSlot1Key,
+    homepageTileCap
+  } = usePlayerStore();
+
+  if (!user) {
+    return <OnboardingScreen />;
+  }
+
+  // Core Cards representing the 10 actionable features or tools
+  const coreCards = [
+    {
+      id: 'mock-draft',
+      kicker: 'CORE APPLICATION',
+      title: 'ELITE MOCK DRAFT SUITE',
+      description: 'Draft in real-time against our evolved neural bot swarm. Calibrate league size, rosters, and test draft strategy camps with dynamic ADP arbitrage telemetry.',
+      btnLabel: 'MOCK NOW',
+      route: '/wizard/setup',
+      graphicType: 'mock' as const
+    },
+    {
+      id: 'cheat-sheets',
+      kicker: 'CUSTOM BOARD BUILDER',
+      title: 'CONSENSUS ADP CHEAT SHEETS',
+      description: 'Construct your ultimate board. Layer ECR projections, flag sleepers, adjust positional scarcity values, and lock key rankings before entering the draft war room.',
+      btnLabel: 'CREATE SHEET',
+      route: '/rankings',
+      graphicType: 'sheets' as const
+    },
+    {
+      id: 'leaderboard-stats',
+      kicker: 'COACH GRADES & ANOMALIES',
+      title: 'HISTORICAL DRAFT LEADERBOARDS',
+      description: 'Review your past drafts. Track your GPA value scores over time, study your highest-value draft selections, and analyze positional arbitrage variance graphs.',
+      btnLabel: 'VIEW STATS',
+      route: '/leaderboard',
+      graphicType: 'leaderboard' as const
+    },
+    {
+      id: 'trade-center',
+      kicker: 'DRAFT TRADE SUITE',
+      title: 'INTERACTIVE SIMULATED TRADE ADVISOR',
+      description: 'Evaluate draft trades with our AI trade telemetry engine. Assess roster impacts, value anomalies, and optimize trade equity on the fly.',
+      btnLabel: 'MANAGE ALERTS',
+      route: '/settings',
+      graphicType: 'news' as const
+    },
+    {
+      id: 'scarcity-wizard',
+      kicker: 'BOARD BUILDER WIZARD',
+      title: 'POSITIONAL SCARCITY SCANNERS',
+      description: 'Calibrate custom scarcity multipliers. Lock down team needs, secure roster anchors, and leverage player tiers dynamically.',
+      btnLabel: 'VIEW CHEAT SHEETS',
+      route: '/rankings',
+      graphicType: 'sheets' as const
+    },
+    {
+      id: 'simulation-lab',
+      kicker: 'EXECUTIVE SYSTEM HARNESS',
+      title: 'MONTE CARLO SIMULATIONS LAB',
+      description: 'Run high-frequency simulations to optimize bot strategies. Access live telemetry dashboards and bot crawl logs instantly.',
+      btnLabel: 'SIMULATION HARNESS',
+      route: '/qa-simulation',
+      graphicType: 'swarm' as const
+    },
+    {
+      id: 'roster-recap',
+      kicker: 'POST-DRAFT GRADE TELEMETRY',
+      title: 'ROSTER RECAP EVALUATOR',
+      description: 'Instantly analyze completed drafts. Review your projected wins, playoff chances, value anomaly percentages, and overall GPA grades.',
+      btnLabel: 'VIEW RECAPPED RUNS',
+      route: '/recap',
+      graphicType: 'leaderboard' as const
+    },
+    {
+      id: 'top250',
+      kicker: 'EXPERT ADP DENSITY',
+      title: 'TOP 250 CONSENSUS MATRIX',
+      description: 'Scan the consolidated Top 250 consensus matrix. Layer expert rankings base values, compare positional trends, and isolate sleeper targets.',
+      btnLabel: 'SCAN THE MATRIX',
+      route: '/rankings',
+      graphicType: 'sheets' as const
+    },
+    {
+      id: 'user-settings',
+      kicker: 'COACH & NOTIFICATION CONFIG',
+      title: 'USER PREFERENCES & CONTROL CENTER',
+      description: 'Configure system options, theme switches, and inbox notifications. Manage permissions, user sessions, and reset data safely.',
+      btnLabel: 'ACCOUNT SETTINGS',
+      route: '/settings',
+      graphicType: 'news' as const
+    },
+    {
+      id: 'expert-ecr',
+      kicker: 'LIVE EXPERT SCENARIOS',
+      title: 'EXPERT CONSENSUS RANKINGS',
+      description: 'Compare ECR consensus ranks against Andy, Mike, and Jason. Leverage dynamic positional scarcity indices and draft filters.',
+      btnLabel: 'ECR DASHBOARD',
+      route: '/rankings',
+      graphicType: 'sheets' as const
+    }
+  ];
+
+  // Dynamic re-ordering based on featuredSlot1Key
+  const sortedCoreCards = [...coreCards];
+  const promotedIndex = sortedCoreCards.findIndex(card => card.id === featuredSlot1Key);
+  if (promotedIndex > 0) {
+    const [promotedCard] = sortedCoreCards.splice(promotedIndex, 1);
+    sortedCoreCards.unshift(promotedCard);
+  }
+
+  // Cap at dynamically configured tile cap (default 10)
+  const activeTileCap = homepageTileCap !== undefined ? homepageTileCap : 10;
+  const homepageTiles = sortedCoreCards.slice(0, activeTileCap).map(card => ({
+    type: 'core' as const,
+    data: card
+  }));
+
+  const handleTilePress = (route: string) => {
+    router.push(route as any);
+  };
+
+  const renderCardFeed = () => {
+    return (
+      <View style={styles.feedContainer}>
+        <View style={styles.tileGrid}>
+          {homepageTiles.map((tile) => (
+            <FeedCard 
+              key={tile.data.id} 
+              tile={tile} 
+              isDesktop={isDesktop} 
+              onPress={handleTilePress} 
+            />
+          ))}
+        </View>
+      </View>
+    );
+  };
+
+  const renderSidebar = () => {
+    return (
+      <View style={[styles.sidebarCard, { backgroundColor: themedColors.surface, borderColor: themedColors.coltsNavyLight }]}>
+        <Text style={[styles.sidebarTitle, { color: themedColors.primaryAccent }]}>MOCK MAXXING</Text>
+        <Text style={[styles.sidebarDesc, { color: themedColors.secondaryAccent }]}>Real-time evolved bot profiles, analytics, and custom cheat sheets</Text>
+        <View style={[styles.sidebarDivider, { backgroundColor: themedColors.coltsNavyLight }]} />
+        <View style={styles.sidebarMenu}>
+          <Text style={[styles.sidebarMenuItemActive, { color: themedColors.primaryAccent }]}>🏠 OVERVIEW</Text>
+          <Pressable onPress={() => router.push('/wizard/setup')}><Text style={[styles.sidebarMenuItem, { color: themedColors.secondaryAccent }]}>🏈 MOCK DRAFT WIZARD</Text></Pressable>
+          <Pressable onPress={() => router.push('/rankings')}><Text style={[styles.sidebarMenuItem, { color: themedColors.secondaryAccent }]}>📋 ADP CHEAT SHEETS</Text></Pressable>
+          <Pressable onPress={() => router.push('/leaderboard')}><Text style={[styles.sidebarMenuItem, { color: themedColors.secondaryAccent }]}>🏆 DRAFT LEADERBOARD</Text></Pressable>
+          <Pressable onPress={() => router.push('/qa-simulation')}><Text style={[styles.sidebarMenuItem, { color: themedColors.secondaryAccent }]}>🧪 SIMULATION HARNESS</Text></Pressable>
+          <Pressable onPress={() => router.push('/settings')}><Text style={[styles.sidebarMenuItem, { color: themedColors.secondaryAccent }]}>⚙️ ACCOUNT CONFIG</Text></Pressable>
+        </View>
+      </View>
+    );
+  };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: themedColors.background }]}>
       <BackgroundTexture />
+
+      {/* Decorative Radial Stadium Lights Glows */}
+      <View style={StyleSheet.absoluteFillObject} pointerEvents="none">
+        <Svg width="100%" height="100%">
+          <Defs>
+            <RadialGradient id="coltsBlueGlow" cx="15%" cy="30%" rx="45%" ry="45%" fx="15%" fy="30%">
+              <Stop offset="0%" stopColor={themedColors.coltsBlueGlow} />
+              <Stop offset="100%" stopColor="rgba(248, 250, 252, 0)" />
+            </RadialGradient>
+            <RadialGradient id="doordashRedGlow" cx="85%" cy="70%" rx="40%" ry="40%" fx="85%" fy="70%">
+              <Stop offset="0%" stopColor={themedColors.doordashRedGlow} />
+              <Stop offset="100%" stopColor="rgba(248, 250, 252, 0)" />
+            </RadialGradient>
+          </Defs>
+          <Circle cx="15%" cy="30%" r="45%" fill="url(#coltsBlueGlow)" />
+          <Circle cx="85%" cy="70%" r="50%" fill="url(#doordashRedGlow)" />
+        </Svg>
+      </View>
+
       <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
-        <ScrollView 
-          contentContainerStyle={styles.scrollContent} 
-          showsVerticalScrollIndicator={false}
-        >
-          {/* Header Section */}
-          <View style={styles.header}>
-            <View style={styles.kickerPill}>
-              <Text style={styles.kickerText}>FANTASY · 2026 · LIVE</Text>
-            </View>
-            
-            <Text style={styles.wordmark}>
-              SNAP<Text style={styles.dot}>·</Text>COUNT
-            </Text>
-            
-            <Text style={styles.tagline}>
-              Sharper rankings. Smarter mocks. Faster reads on the news that actually moves your roster.
-            </Text>
-          </View>
+        {/* Horizontal responsive desktop split layout wrapper */}
+        <View style={styles.mainSplitWrapper}>
+          {/* Render left column navigation sidebar on large screens */}
+          {isDesktop && renderSidebar()}
 
-          {/* Cards Section */}
-          <View style={styles.cardContainer}>
-            
-            {/* HERO CARD: Draft Wizard */}
-            <Pressable 
-              style={({ pressed }) => [styles.heroCard, pressed && styles.cardPressed]}
-              onPress={() => router.push('/wizard/setup')}
-            >
-              {/* Background Trophy Watermark */}
-              <View style={styles.trophyWatermark}>
-                <Svg width={120} height={120} viewBox="0 0 24 24" fill="none">
-                  <Path
-                    d="M18 2H6C4.9 2 4 2.9 4 4V7C4 8.66 5.34 10 7 10H8.09C8.61 12.3 10.3 14.12 12.5 14.75V19H9C8.45 19 8 19.45 8 20V21C8 21.55 8.45 22 9 22H15C15.55 22 16 21.55 16 21V20C16 19.45 15.55 19 15 19H11.5V14.75C13.7 14.12 15.39 12.3 15.91 10H17C18.66 10 20 8.66 20 7V4C20 2.9 19.1 2 18 2ZM6 8V4H7V8C7 8.55 6.55 9 6 9C5.45 9 5 8.55 5 8V8ZM19 7C19 7.55 18.55 8 18 8H17V4H18V7C18 7.55 18.55 8 19 8Z"
-                    fill="#F8FAFC"
-                    opacity={0.06}
-                  />
-                </Svg>
+          {/* Right main workspace layout */}
+          <View style={styles.rightWorkspace}>
+            {isDesktop ? (
+              <>
+                {/* Header Area */}
+                <View style={styles.workspaceHeader}>
+                  <View style={styles.headerTitleArea}>
+                    <Text style={styles.headerTitle}>COACH OVERVIEW DASHBOARD</Text>
+                    <Text style={styles.headerSubtitle}>Real-time evolved bot profiles, analytics, and custom cheat sheets</Text>
+                  </View>
+                  <View style={styles.headerRightActions}>
+                    <View style={styles.syncBadge}>
+                      <View style={styles.syncDot} />
+                      <Text style={styles.syncText}>SYNC ACTIVE</Text>
+                    </View>
+                  </View>
+                </View>
+
+                {/* Scrollable Workspace content viewports */}
+                <ScrollView
+                  style={styles.scrollArea}
+                  contentContainerStyle={styles.scrollContent}
+                  showsVerticalScrollIndicator={false}
+                >
+
+
+                  {/* Starbucks-Style Uniform Card Feed */}
+                  {renderCardFeed()}
+                </ScrollView>
+              </>
+            ) : (
+              // Mobile layout with premium scroll layout!
+              <View style={{ flex: 1 }}>
+                <ScrollView
+                  style={styles.scrollArea}
+                  contentContainerStyle={styles.scrollContentMobile}
+                  showsVerticalScrollIndicator={false}
+                >
+                  {/* AppHeader + Greeting Banner */}
+                  <View style={styles.mobileHeaderGroup}>
+                    <AppHeader isLanding={true} />
+                    
+                    {/* Starbucks-style personalized greeting banner */}
+                    <View style={styles.mobileGreetingBanner}>
+                      <Text style={[styles.greetingMainText, { color: themedColors.primaryAccent }]}>
+                        {((user?.firstName || 'COACH') + ", LET'S COOK.").toUpperCase()}
+                      </Text>
+                    </View>
+                  </View>
+
+                  {/* DRAFT NOW Floating CTA */}
+                  <View style={styles.mobileCTAContainer}>
+                    <Pressable
+                      onPress={() => {
+                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+                        router.push('/wizard/setup');
+                      }}
+                      style={({ pressed }) => [
+                        styles.draftNowBtn,
+                        {
+                          backgroundColor: themedColors.pylonOrange,
+                          transform: [{ scale: pressed ? 0.95 : 1 }],
+                        }
+                      ]}
+                    >
+                      <Text style={styles.draftNowText}>DRAFT NOW</Text>
+                    </Pressable>
+                  </View>
+
+                  {/* Pigskin Brown Leather Tray Content Panel */}
+                  <View style={styles.leatherTray}>
+                    <View style={styles.trayGrid}>
+                      <Pressable
+                        onPress={() => {
+                          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+                          router.push('/rankings');
+                        }}
+                        style={({ pressed }) => [
+                          styles.trayBtn,
+                          {
+                            borderColor: themedColors.secondaryAccent,
+                            transform: [{ scale: pressed ? 0.97 : 1 }]
+                          }
+                        ]}
+                      >
+                        <Text style={[styles.trayBtnText, { color: themedColors.secondaryAccent }]}>CHEAT SHEETS</Text>
+                      </Pressable>
+                      <Pressable
+                        onPress={() => {
+                          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+                          router.push('/leaderboard');
+                        }}
+                        style={({ pressed }) => [
+                          styles.trayBtn,
+                          {
+                            borderColor: themedColors.secondaryAccent,
+                            transform: [{ scale: pressed ? 0.97 : 1 }]
+                          }
+                        ]}
+                      >
+                        <Text style={[styles.trayBtnText, { color: themedColors.secondaryAccent }]}>LEADERBOARD</Text>
+                      </Pressable>
+                      <Pressable
+                        onPress={() => {
+                          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+                          router.push('/news');
+                        }}
+                        style={({ pressed }) => [
+                          styles.trayBtn,
+                          {
+                            borderColor: themedColors.secondaryAccent,
+                            transform: [{ scale: pressed ? 0.97 : 1 }]
+                          }
+                        ]}
+                      >
+                        <Text style={[styles.trayBtnText, { color: themedColors.secondaryAccent }]}>NEWS</Text>
+                      </Pressable>
+                      <Pressable
+                        onPress={() => {
+                          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+                          router.push('/settings');
+                        }}
+                        style={({ pressed }) => [
+                          styles.trayBtn,
+                          {
+                            borderColor: themedColors.secondaryAccent,
+                            transform: [{ scale: pressed ? 0.97 : 1 }]
+                          }
+                        ]}
+                      >
+                        <Text style={[styles.trayBtnText, { color: themedColors.secondaryAccent }]}>SETTINGS</Text>
+                      </Pressable>
+                    </View>
+                  </View>
+
+                  {/* Starbucks-Style Uniform Card Feed */}
+                  <View style={{ paddingHorizontal: 16 }}>
+                    {renderCardFeed()}
+                  </View>
+                </ScrollView>
               </View>
-
-              <View style={styles.heroTextContainer}>
-                <Text style={styles.heroKicker}>DRAFT SIMULATOR</Text>
-                <Text style={styles.heroTitle}>AI DRAFT WIZARD</Text>
-                <Text style={styles.heroSubtitle}>
-                  Mock draft against smart AI opponents with pick suggestions and live grade analysis.
-                </Text>
-              </View>
-
-              <View style={styles.heroButton}>
-                <Text style={styles.heroButtonText}>START MOCK DRAFT</Text>
-              </View>
-            </Pressable>
-
-            {/* SECONDARY ROW CARDS */}
-            <View style={styles.row}>
-              
-              {/* Rankings Card */}
-              <Pressable 
-                style={({ pressed }) => [styles.secondaryCard, pressed && styles.cardPressed]}
-                onPress={() => router.push('/rankings')}
-              >
-                <Text style={styles.secondaryCardKicker}>TOP 150</Text>
-                <Text style={styles.secondaryCardTitle}>CONSENSUS RANKINGS</Text>
-                <Text style={styles.secondaryCardBody}>
-                  Half-PPR cheat sheet. Filter by position, search active ADP, and view round dividers.
-                </Text>
-                <Text style={styles.arrowLink}>VIEW RANKINGS →</Text>
-              </Pressable>
-
-              {/* News & Notes Card */}
-              <Pressable 
-                style={({ pressed }) => [styles.secondaryCard, pressed && styles.cardPressed]}
-                onPress={() => router.push('/news')}
-              >
-                <Text style={styles.secondaryCardKicker}>FANTASY INSIGHT</Text>
-                <Text style={styles.secondaryCardTitle}>NEWS & TAKES</Text>
-                <Text style={styles.secondaryCardBody}>
-                  Reaction-based takes to the NFL news cycle. Actionable fantasy up/down movers.
-                </Text>
-                <Text style={styles.arrowLink}>READ ARTICLES →</Text>
-              </Pressable>
-
-            </View>
-
+            )}
           </View>
-
-          {/* Footer */}
-          <View style={styles.footer}>
-            <Text style={styles.footerText}>DATA SOURCES: ESPN CDN & EXPERT ADP CONSENSUS</Text>
-            <Text style={styles.footerVersion}>SNAP·COUNT v2.0 · PILOT BUILD</Text>
-          </View>
-        </ScrollView>
+        </View>
       </SafeAreaView>
+
+      {/* Absolute persistent mobile tab navigation */}
+      {!isDesktop && <AppTabBar />}
     </View>
+  );
+}
+
+export default function SafeLandingScreen() {
+  return (
+    <ErrorBoundary>
+      <LandingScreen />
+    </ErrorBoundary>
   );
 }
 
@@ -114,175 +372,185 @@ const styles = StyleSheet.create({
   },
   safeArea: {
     flex: 1,
-    alignSelf: 'center',
-    width: '100%',
-    maxWidth: MaxContentWidth,
   },
-  scrollContent: {
-    paddingHorizontal: Spacing.four,
-    paddingVertical: Spacing.five,
-    flexGrow: 1,
-    justifyContent: 'space-between',
-    gap: Spacing.five,
+  mainSplitWrapper: {
+    flex: 1,
+    flexDirection: 'row',
   },
-  header: {
-    alignItems: 'center',
-    marginTop: Spacing.three,
-    gap: Spacing.three,
+  sidebarCard: {
+    width: 260,
+    borderRightWidth: 1,
+    paddingTop: 40,
+    paddingHorizontal: 20,
   },
-  kickerPill: {
-    backgroundColor: '#0a1530',
-    borderColor: '#1a4480',
-    borderWidth: 1,
-    paddingVertical: Spacing.one,
-    paddingHorizontal: Spacing.three,
-    borderRadius: 50,
-  },
-  kickerText: {
-    fontFamily: Fonts.stats,
-    fontSize: 10,
-    color: '#E2E8F0',
-    letterSpacing: 2,
-  },
-  wordmark: {
+  sidebarTitle: {
     fontFamily: Fonts.headings,
-    fontSize: 52,
-    fontWeight: 'bold',
-    color: Colors.primaryAccent,
-    letterSpacing: -1,
-  },
-  dot: {
-    color: Colors.primaryAccent,
-  },
-  tagline: {
-    fontFamily: Fonts.body,
-    fontSize: 15,
-    color: Colors.secondaryAccent,
-    textAlign: 'center',
-    lineHeight: 22,
-    paddingHorizontal: Spacing.three,
-  },
-  cardContainer: {
-    gap: Spacing.four,
-  },
-  heroCard: {
-    backgroundColor: Colors.surface,
-    borderColor: '#1a4480',
-    borderWidth: 1,
-    borderRadius: Spacing.three,
-    padding: Spacing.four,
-    position: 'relative',
-    overflow: 'hidden',
-    minHeight: 180,
-    justifyContent: 'space-between',
-    gap: Spacing.four,
-  },
-  trophyWatermark: {
-    position: 'absolute',
-    right: -10,
-    bottom: -10,
-  },
-  heroTextContainer: {
-    gap: Spacing.one,
-  },
-  heroKicker: {
-    fontFamily: Fonts.stats,
-    fontSize: 10,
-    color: Colors.positions.RB, // Green accent for draft kicker
-    letterSpacing: 1.5,
-  },
-  heroTitle: {
-    fontFamily: Fonts.headings,
-    fontSize: 32,
-    fontWeight: 'bold',
-    color: Colors.primaryAccent,
-    letterSpacing: -0.5,
-  },
-  heroSubtitle: {
-    fontFamily: Fonts.body,
-    fontSize: 14,
-    color: Colors.secondaryAccent,
-    lineHeight: 20,
-    maxWidth: '85%',
-  },
-  heroButton: {
-    backgroundColor: Colors.primaryAccent,
-    paddingVertical: Spacing.two,
-    borderRadius: Spacing.two,
-    alignItems: 'center',
-    justifyContent: 'center',
-    alignSelf: 'flex-start',
-    paddingHorizontal: Spacing.four,
-    minHeight: 44, // HIG standard minimum
-  },
-  heroButtonText: {
-    fontFamily: Fonts.headings,
-    fontSize: 14,
-    color: Colors.background,
+    fontSize: 22,
     fontWeight: 'bold',
     letterSpacing: 0.5,
+    marginBottom: 4,
   },
-  row: {
-    flexDirection: 'row',
-    gap: Spacing.four,
-    flexWrap: 'wrap',
+  sidebarDesc: {
+    fontFamily: Fonts.body,
+    fontSize: 10,
+    lineHeight: 14,
+    marginBottom: 20,
   },
-  secondaryCard: {
-    backgroundColor: Colors.surface,
-    borderColor: '#1a4480',
-    borderWidth: 1,
-    borderRadius: Spacing.three,
-    padding: Spacing.three,
-    flex: 1,
-    minWidth: 260,
-    justifyContent: 'space-between',
-    minHeight: 180,
-    gap: Spacing.two,
+  sidebarDivider: {
+    height: 1,
+    marginBottom: 20,
   },
-  secondaryCardKicker: {
-    fontFamily: Fonts.stats,
-    fontSize: 9,
-    color: Colors.positions.WR,
-    letterSpacing: 1.5,
+  sidebarMenu: {
+    gap: 16,
   },
-  secondaryCardTitle: {
+  sidebarMenuItemActive: {
     fontFamily: Fonts.headings,
-    fontSize: 20,
+    fontSize: 14,
     fontWeight: 'bold',
-    color: Colors.primaryAccent,
   },
-  secondaryCardBody: {
+  sidebarMenuItem: {
+    fontFamily: Fonts.headings,
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  rightWorkspace: {
+    flex: 1,
+  },
+  workspaceHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 24,
+    paddingTop: 24,
+    paddingBottom: 16,
+  },
+  headerTitleArea: {
+    gap: 4,
+  },
+  headerTitle: {
+    fontFamily: Fonts.headings,
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#ffffff',
+  },
+  headerSubtitle: {
     fontFamily: Fonts.body,
     fontSize: 12,
-    color: Colors.secondaryAccent,
-    lineHeight: 18,
+    color: '#94a3b8',
   },
-  arrowLink: {
-    fontFamily: Fonts.stats,
-    fontSize: 11,
-    color: Colors.primaryAccent,
-    marginTop: Spacing.two,
-  },
-  cardPressed: {
-    borderColor: Colors.primaryAccent,
-    opacity: 0.95,
-  },
-  footer: {
+  headerRightActions: {
+    flexDirection: 'row',
     alignItems: 'center',
-    marginTop: Spacing.four,
-    gap: Spacing.one,
+    gap: 12,
   },
-  footerText: {
+  syncBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: 'rgba(34, 197, 94, 0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(34, 197, 94, 0.2)',
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    borderRadius: 12,
+  },
+  syncDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#22C55E',
+  },
+  syncText: {
     fontFamily: Fonts.stats,
-    fontSize: 9,
-    color: Colors.secondaryAccent,
-    opacity: 0.5,
+    fontSize: 8,
+    fontWeight: 'bold',
+    color: '#22C55E',
+  },
+  scrollArea: {
+    flex: 1,
+  },
+  scrollContent: {
+    paddingHorizontal: 24,
+    paddingBottom: 40,
+  },
+  scrollContentMobile: {
+    paddingBottom: 80,
+  },
+  mobileHeaderGroup: {
+    width: '100%',
+    marginBottom: 16,
+  },
+  mobileGreetingBanner: {
+    paddingHorizontal: 16,
+    paddingTop: 16,
+  },
+  greetingMainText: {
+    fontFamily: Fonts.headings,
+    fontSize: 26,
     letterSpacing: 0.5,
   },
-  footerVersion: {
-    fontFamily: Fonts.stats,
-    fontSize: 9,
-    color: Colors.secondaryAccent,
-    opacity: 0.3,
+  feedContainer: {
+    width: '100%',
+  },
+  tileGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    width: '100%',
+  },
+  mobileCTAContainer: {
+    paddingHorizontal: 16,
+    marginBottom: 16,
+  },
+  draftNowBtn: {
+    height: 54,
+    borderRadius: 27,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 5,
+    elevation: 6,
+  },
+  draftNowText: {
+    fontFamily: Fonts.headings,
+    fontSize: 18,
+    fontWeight: '900',
+    color: '#ffffff',
+    letterSpacing: 1,
+  },
+  leatherTray: {
+    backgroundColor: '#6B3615',
+    marginHorizontal: 16,
+    marginBottom: 24,
+    borderRadius: 16,
+    padding: 24,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 3,
+    elevation: 4,
+  },
+  trayGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  trayBtn: {
+    width: '47%',
+    height: 48,
+    borderWidth: 1,
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'transparent',
+  },
+  trayBtnText: {
+    fontFamily: Fonts.headings,
+    fontSize: 13,
+    fontWeight: 'bold',
+    letterSpacing: 0.5,
   },
 });

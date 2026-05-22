@@ -1,4 +1,5 @@
 import React, { useEffect } from 'react';
+import '../global.css';
 import { StatusBar } from 'expo-status-bar';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
@@ -16,13 +17,25 @@ import {
   Inter_600SemiBold, 
   Inter_700Bold 
 } from '@expo-google-fonts/inter';
-import { Colors } from '@/constants/theme';
+import { useColors } from '@/constants/theme';
+import { useThemeStore } from '@/store/useThemeStore';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { Text, TextInput } from 'react-native';
+import { useAuthSync } from '@/hooks/useAuthSync';
+import { useAuthStore } from '@/store/useAuthStore';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
 
 // Prevent splash screen auto-hiding until assets are loaded
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
 export default function RootLayout() {
+  const Colors = useColors();
+  const theme = useThemeStore((state) => state.theme);
+  const { initAuth, isInitialized } = useAuthStore();
+
+  useAuthSync();
+
   const [fontsLoaded, fontError] = useFonts({
     'Oswald': Oswald_700Bold,
     'Oswald-Medium': Oswald_500Medium,
@@ -34,32 +47,64 @@ export default function RootLayout() {
   });
 
   useEffect(() => {
-    if (fontsLoaded || fontError) {
+    initAuth();
+  }, []);
+
+  useEffect(() => {
+    if (fontsLoaded) {
+      console.log('✅ mockmaxxing Custom Fonts loaded successfully!');
+    }
+    if (fontError) {
+      console.error('❌ mockmaxxing Custom Font Loading Error:', fontError);
+    }
+
+    // Inject elegant Caveat Google Font for premium cursive branding on Web
+    if (typeof window !== 'undefined' && document.head) {
+      const existingLink = document.getElementById('google-font-caveat');
+      if (!existingLink) {
+        const link = document.createElement('link');
+        link.id = 'google-font-caveat';
+        link.href = 'https://fonts.googleapis.com/css2?family=Caveat:wght@700&display=swap';
+        link.rel = 'stylesheet';
+        document.head.appendChild(link);
+      }
+    }
+
+    if ((fontsLoaded || fontError) && isInitialized) {
       SplashScreen.hideAsync().catch(() => {});
     }
-  }, [fontsLoaded, fontError]);
+  }, [fontsLoaded, fontError, isInitialized]);
 
-  if (!fontsLoaded && !fontError) {
+  if ((!fontsLoaded && !fontError) || !isInitialized) {
     return null;
   }
 
   return (
-    <SafeAreaProvider>
-      <StatusBar style="light" backgroundColor={Colors.background} />
-      <Stack
-        screenOptions={{
-          headerShown: false,
-          contentStyle: { backgroundColor: Colors.background },
-          animation: 'fade',
-        }}
-      >
-        <Stack.Screen name="index" />
-        <Stack.Screen name="rankings" />
-        <Stack.Screen name="news" />
-        <Stack.Screen name="wizard/setup" />
-        <Stack.Screen name="wizard/active" />
-        <Stack.Screen name="wizard/summary" />
-      </Stack>
-    </SafeAreaProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <SafeAreaProvider>
+        <ErrorBoundary>
+          <StatusBar style={theme === 'dark' ? 'light' : 'dark'} backgroundColor={Colors.background} />
+          <Stack
+            screenOptions={{
+              headerShown: false,
+              contentStyle: { backgroundColor: Colors.background },
+              animation: 'fade',
+            }}
+          >
+            <Stack.Screen name="index" />
+            <Stack.Screen name="rankings" />
+            <Stack.Screen name="news" />
+            <Stack.Screen name="leaderboard" />
+            <Stack.Screen name="qa-simulation" />
+            <Stack.Screen name="wizard/setup" />
+            <Stack.Screen name="wizard/active" />
+            <Stack.Screen name="wizard/summary" />
+            <Stack.Screen name="settings" />
+            <Stack.Screen name="recap" />
+            <Stack.Screen name="executive-dashboard" />
+          </Stack>
+        </ErrorBoundary>
+      </SafeAreaProvider>
+    </GestureHandlerRootView>
   );
 }

@@ -1,151 +1,812 @@
-import React, { useMemo } from 'react';
-import { StyleSheet, View, Text, Pressable, ScrollView, Image } from 'react-native';
+import React, { useMemo, useState, useEffect, useCallback } from 'react';
+import { View, Text, Pressable, ScrollView, Image, ActivityIndicator, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { useSnapStore } from '@/store/useSnapStore';
+import { useDraftStore } from '@/store/useDraftStore';
+import { useHistoryStore } from '@/store/useHistoryStore';
+import { useSimulationStore } from '@/store/useSimulationStore';
+import { getTeamNameForIndex, getUserTeamName } from '@/store/_helpers';
 import { getTeamLogoUrl } from '@/store/mockData';
-import { Colors, Fonts, Spacing, MaxContentWidth } from '@/constants/theme';
+import { Fonts, useColors } from '@/constants/theme';
+import { useThemeStore } from '@/store/useThemeStore';
 import BackgroundTexture from '@/components/BackgroundTexture';
-import Svg, { Path } from 'react-native-svg';
+import AppHeader from '@/components/AppHeader';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
+import GradeCard from '@/components/GradeCard';
+import RosterTable from '@/components/RosterTable';
+import AILearningChart from '@/components/AILearningChart';
+import StandingsTable from '@/components/StandingsTable';
+import * as Haptics from 'expo-haptics';
+import { summaryStyles as activeStyles } from './summary.styles';
 
-export default function DraftSummaryScreen() {
+// Helper to format player names cleanly to First Initial + Last Name
+const getDisplayName = (name: string) => {
+  const parts = name.trim().split(/\s+/);
+  if (parts.length > 1) {
+    const suffixes = ['jr', 'sr', 'ii', 'iii', 'iv', 'v', 'jr.', 'sr.'];
+    const lastPart = parts[parts.length - 1].toLowerCase();
+    if (suffixes.includes(lastPart) && parts.length > 2) {
+      return `${parts[0][0]}. ${parts[parts.length - 2]} ${parts[parts.length - 1]}`;
+    }
+    return `${parts[0][0]}. ${parts.slice(1).join(' ')}`;
+  }
+  return name;
+};
+
+// Map players to direct ESPN player IDs for premium headshots
+const getPlayerHeadshotUrl = (espnId: number | null, position: string, team?: string) => {
+  if (position === 'DST' && team) {
+    return getTeamLogoUrl(team);
+  }
+  if (espnId) {
+    return `https://a.espncdn.com/i/headshots/nfl/players/full/${espnId}.png`;
+  }
+  return `https://a.espncdn.com/combiner/i?img=/i/headshots/nfl/players/full/default.png&w=350&h=254`;
+};
+
+const getGradeLetterFromPoints = (pts: number): string => {
+  if (pts >= 11.5) return 'A+';
+  if (pts >= 10.5) return 'A';
+  if (pts >= 9.5) return 'A-';
+  if (pts >= 8.5) return 'B+';
+  if (pts >= 7.5) return 'B';
+  if (pts >= 6.5) return 'B-';
+  if (pts >= 5.5) return 'C+';
+  if (pts >= 4.5) return 'C';
+  if (pts >= 3.5) return 'C-';
+  if (pts >= 2.5) return 'D+';
+  if (pts >= 1.5) return 'D';
+  return 'F';
+};
+
+const getGradePoints = (grade: string): number => {
+  switch (grade) {
+    case 'A+': return 12;
+    case 'A': return 11;
+    case 'A-': return 10;
+    case 'B+': return 9;
+    case 'B': return 8;
+    case 'B-': return 7;
+    case 'C+': return 6;
+    case 'C': return 5;
+    case 'C-': return 4;
+    case 'D+': return 3;
+    case 'D': return 2;
+    default: return 0;
+  }
+};
+
+function DraftSummaryScreen() {
+  const Colors = useColors();
   const router = useRouter();
   
-  const setup = useSnapStore((state) => state.setup);
-  const resetDraft = useSnapStore((state) => state.resetDraft);
-  const getDraftGrade = useSnapStore((state) => state.getDraftGrade);
-  const getUserRoster = useSnapStore((state) => state.getUserRoster);
+  const triggerHaptic = async (style = Haptics.ImpactFeedbackStyle.Light) => {
+    if (Platform.OS !== 'web') {
+      try {
+        await Haptics.impactAsync(style);
+      } catch (err) {
+        console.warn('Haptics failed:', err);
+      }
+    }
+  };
+
+  const setup = useDraftStore((state) => state.setup);
+  const resetDraft = useDraftStore((state) => state.resetDraft);
+  const getDraftGrade = useDraftStore((state) => state.getDraftGrade);
+  const getUserRoster = useDraftStore((state) => state.getUserRoster);
+  const draftHistory = useDraftStore((state) => state.draftHistory);
+  const historicalDrafts = useHistoryStore((state) => state.historicalDrafts || []);
+  const botTrainingSims = useHistoryStore((state) => state.botTrainingSims || 0);
+  
+  const populateHistory = useHistoryStore((state) => state.populateHistory);
+  const clearHistory = useHistoryStore((state) => state.clearHistory);
+
+  const [activeTab, setActiveTab] = useState<'roster' | 'coach' | 'performance' | 'leaderboard' | 'board'>('roster');
+  const [isSimulating, setIsSimulating] = useState(false);
+  const [simProgress, setSimProgress] = useState(0);
+
+
+  const runSimulationBatches = useCallback((totalCount: number) => {
+    setIsSimulating(true);
+    setSimProgress(0);
+    let currentCount = 0;
+    const batchSize = 250;
+    const runBatch = () => {
+      if (currentCount >= totalCount) {
+        setIsSimulating(false);
+        setSimProgress(100);
+        return;
+      }
+      populateHistory(batchSize);
+      currentCount += batchSize;
+      setSimProgress(Math.min(100, Math.round((currentCount / totalCount) * 100)));
+      setTimeout(runBatch, 16);
+    };
+    setTimeout(runBatch, 50);
+  }, [populateHistory]);
+
+  // Trigger auto prepopulate of 5,000 simulations if history is empty
+  useEffect(() => {
+    if (historicalDrafts.length === 0 && !isSimulating) {
+      runSimulationBatches(5000);
+    }
+  }, [historicalDrafts.length, isSimulating, runSimulationBatches]);
 
   const roster = useMemo(() => {
     return getUserRoster();
   }, [getUserRoster]);
 
-  const { grade, valueScore } = useMemo(() => {
+  const { grade, valueScore, playoffChance, projectedWins, projectedLosses } = useMemo(() => {
     return getDraftGrade();
   }, [getDraftGrade]);
 
-  const isHOF = grade === 'A+';
-
   const handleRestart = () => {
+    triggerHaptic(Haptics.ImpactFeedbackStyle.Medium);
     resetDraft();
     router.replace('/wizard/setup');
   };
 
   const handleHome = () => {
+    triggerHaptic(Haptics.ImpactFeedbackStyle.Medium);
     resetDraft();
     router.replace('/');
   };
 
-  return (
-    <View style={styles.container}>
-      <BackgroundTexture />
-      <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
+  // Helper to extract exact draft pick number for active draft
+  const getUserPickNumber = (playerName: string) => {
+    const pickObj = draftHistory.find(h => h.player.name === playerName);
+    return pickObj ? pickObj.pickNumber : '-';
+  };
+
+  // Starters & bench count approximations for Expected Performance metrics
+  const benchPlayers = useMemo(() => {
+    const starterCount = 8 + (setup.flexCount ?? 1);
+    return roster.slice(starterCount);
+  }, [roster, setup.flexCount]);
+
+  // Positional bye conflicts
+  const positionByeCounts = useMemo(() => {
+    const counts: { [pos: string]: { [bye: number]: number } } = {};
+    roster.forEach(player => {
+      const pos = player.position;
+      const bye = player.bye;
+      if (!counts[pos]) counts[pos] = {};
+      counts[pos][bye] = (counts[pos][bye] || 0) + 1;
+    });
+    return counts;
+  }, [roster]);
+
+  const byeConflictCount = useMemo(() => {
+    let conflicts = 0;
+    Object.keys(positionByeCounts).forEach(pos => {
+      Object.keys(positionByeCounts[pos]).forEach(bye => {
+        if (positionByeCounts[pos][Number(bye)] >= 2) {
+          conflicts++;
+        }
+      });
+    });
+    return conflicts;
+  }, [positionByeCounts]);
+
+  const getByeScore = () => {
+    if (byeConflictCount === 0) return 100;
+    if (byeConflictCount === 1) return 85;
+    if (byeConflictCount === 2) return 65;
+    return 45;
+  };
+
+  // DRAFT COACH STRATEGY INSIGHTS & ALTERATIONS
+  const coachStrategyAnalysis = useMemo(() => {
+    const selectedStrat = setup.userStrategy || 'Balanced';
+    const firstFivePicks = draftHistory.filter(h => h.teamName === getUserTeamName() || h.teamName === 'Your Team').slice(0, 5);
+    const firstFiveRBs = firstFivePicks.filter(p => p.player.position === 'RB');
+    const qbPickedEarly = firstFivePicks.find(p => p.player.position === 'QB');
+    const tePickedEarly = firstFivePicks.find(p => p.player.position === 'TE');
+
+    let feedback = '';
+    let success = false;
+    let suggestions: string[] = [];
+
+    if (selectedStrat === 'Zero RB') {
+      const rbCount = firstFiveRBs.length;
+      if (rbCount > 0) {
+        success = false;
+        feedback = `You declared a "Zero RB" draft strategy but drafted ${rbCount} RB(s) in your first 5 picks. This violates the Zero RB mandate.`;
+        suggestions = [
+          "Avoid any running backs in rounds 1 through 5, even if they slip past ADP.",
+          "Target three high-ceiling starting WRs and an elite TE in the initial 4 rounds.",
+          "Stack late-round RBs (Round 6+) who have high injury-contingent upside."
+        ];
+      } else {
+        success = true;
+        feedback = `Masterful Zero RB execution! You passed on early running backs entirely and drafted 0 RBs in the first 5 rounds. Secure WR volume.`;
+        suggestions = [
+          "Continue exploiting this strategy in high-volume passing environments.",
+          "Keep an eye on premium backups during pre-season to grab handcuffs.",
+          "Maintain a waiver-wire bias towards high-value backup running backs."
+        ];
+      }
+    } else if (selectedStrat === 'Hero RB') {
+      const rbCount = firstFiveRBs.length;
+      const earlyRB = firstFivePicks.slice(0, 2).filter(p => p.player.position === 'RB').length;
+      if (earlyRB === 1 && rbCount === 1) {
+        success = true;
+        feedback = `Perfect Hero RB execution! You drafted exactly one elite anchor RB in your first 2 picks, and zero RBs in rounds 3-5.`;
+        suggestions = [
+          "Look to fill your RB2 slot with a robust committee in rounds 7-10.",
+          "Use your strong WR capital to dominate Flex slots and bye week coverages."
+        ];
+      } else if (earlyRB === 0) {
+        success = false;
+        feedback = `Hero RB strategy requires securing a single elite anchor RB in Round 1 or Round 2. Since you did not draft an RB early, your roster misses the foundation.`;
+        suggestions = [
+          "Lock in one Tier 1/2 running back inside the first 2 rounds.",
+          "Strictly avoid drafting any additional RBs until Round 6 or 7.",
+          "Hoard elite pass catchers once your anchor RB is secured."
+        ];
+      } else {
+        success = false;
+        feedback = `You selected Hero RB but hoarded ${rbCount} early running backs. Drafting multiple RBs in the first 5 rounds dilutes your ability to build WR depth.`;
+        suggestions = [
+          "Draft only ONE running back in your first 5 picks.",
+          "Trust your single anchor RB to carry the load, and focus heavily on receivers.",
+          "Add positional depth RBs much later (Rounds 8+)."
+        ];
+      }
+    } else if (selectedStrat === 'Late QB/TE Focus') {
+      if (qbPickedEarly || tePickedEarly) {
+        success = false;
+        const earlyPos = qbPickedEarly && tePickedEarly ? 'QB and TE' : qbPickedEarly ? 'QB' : 'TE';
+        const earlyRound = qbPickedEarly ? qbPickedEarly.round : tePickedEarly?.round;
+        feedback = `You declared a "Late QB/TE" strategy but reached for a ${earlyPos} in Round ${earlyRound}. Waiting on single-starter positions is crucial.`;
+        suggestions = [
+          "Strictly ignore quarterbacks and tight ends during the first 8 rounds.",
+          "Value premium WR/RB depth over minor positional tier jumps at QB/TE.",
+          "Target high-upside late-round dual-threat QBs in Round 9+."
+        ];
+      } else {
+        success = true;
+        feedback = `Disciplined execution of Late QB/TE! You avoided early single-starter selections, hoarding prime running backs and wide receivers instead.`;
+        suggestions = [
+          "Exploit late-round rushing QBs and athletic developmental tight ends.",
+          "Stream matchups at QB/TE weekly to optimize positional efficiency."
+        ];
+      }
+    } else {
+      success = true;
+      feedback = `Excellent Balanced draft! You navigated value boards efficiently, spreading capital across RBs and WRs. Roster is highly secure.`;
+      suggestions = [
+        "Let ECR and ADP value drops dictate your picks rather than forcing roster slots.",
+        "Optimize starting grids based on weekly matchups rather than positional loyalty."
+      ];
+    }
+
+    return { success, feedback, suggestions, selectedStrat };
+  }, [setup.userStrategy, draftHistory, roster]);
+
+  // EXPECTED PERFORMANCE GAME-BY-GAME & QUARTER-BY-QUARTER
+  const performanceTelemetry = useMemo(() => {
+    const avgScore = 100 + (valueScore * 0.8) + (grade === 'A+' ? 15 : grade === 'A' ? 10 : grade.startsWith('B') ? 5 : 0);
+    const weeklyProjections = Array.from({ length: 14 }, (_, idx) => {
+      const week = idx + 1;
+      const seed = week * 17 + projectedWins;
+      const randNoise = ((seed % 19) - 9) * 1.5;
+      const median = Math.round(avgScore + randNoise);
+      const floor = Math.round(median - 15 - (seed % 5));
+      const ceiling = Math.round(median + 18 + (seed % 7));
+
+      const oppAvg = 105 + ((seed % 13) - 6);
+      const isWin = median > oppAvg;
+      
+      const botNames = ['Andy', 'Mike', 'Jason', 'Sarah', 'David', 'Jessica', 'Michael', 'Emily', 'James', 'Ashley', 'Robert'];
+      const opponentName = botNames[(idx + setup.userPosition) % botNames.length];
+
+      return {
+        week,
+        floor,
+        median,
+        ceiling,
+        opponent: opponentName,
+        isWin,
+        oppScore: Math.round(oppAvg)
+      };
+    });
+
+    const ptsScored = Number((avgScore * 14).toFixed(0));
+    const ptsAllowed = Number((105 * 14 - valueScore * 5).toFixed(0));
+
+    return {
+      avgScore,
+      weeklyProjections,
+      ptsScored,
+      ptsAllowed
+    };
+  }, [valueScore, grade, projectedWins, setup.userPosition]);
+
+  // HISTORICAL STANDINGS LEADERBOARD REAL-TIME AGGREGATION
+  const leaderboardData = useMemo(() => {
+    const acc: { [name: string]: any } = {};
+    const botNames = ['Andy', 'Mike', 'Jason', 'Sarah', 'David', 'Jessica', 'Michael', 'Emily', 'James', 'Ashley', 'Robert'];
+    const userTeamName = getUserTeamName();
+    
+    acc[userTeamName] = {
+      name: userTeamName,
+      isHuman: true,
+      strategyCamp: setup.userStrategy || 'Balanced',
+      expertPreference: setup.rankingsBase || 'ECR Consensus',
+      totalWins: 0,
+      totalLosses: 0,
+      playoffChanceSum: 0,
+      playoffCount: 0,
+      gradePointsSum: 0,
+      draftCount: 0
+    };
+
+    botNames.forEach(name => {
+      const profile = useSimulationStore.getState().botProfiles[name] || { strategyCamp: 'Balanced', expertPreference: 'ECR Consensus' };
+      acc[name] = {
+        name,
+        isHuman: false,
+        strategyCamp: profile.strategyCamp,
+        expertPreference: profile.expertPreference,
+        totalWins: 0,
+        totalLosses: 0,
+        playoffChanceSum: 0,
+        playoffCount: 0,
+        gradePointsSum: 0,
+        draftCount: 0
+      };
+    });
+
+    historicalDrafts.forEach(draft => {
+      draft.teams.forEach(team => {
+        const teamName = team.teamName;
+        const key = (teamName === userTeamName || teamName === 'Your Team') ? userTeamName : teamName;
         
+        if (!acc[key]) {
+          acc[key] = {
+            name: key,
+            isHuman: key === userTeamName,
+            strategyCamp: team.strategyCamp,
+            expertPreference: team.expertPreference,
+            totalWins: 0,
+            totalLosses: 0,
+            playoffChanceSum: 0,
+            playoffCount: 0,
+            gradePointsSum: 0,
+            draftCount: 0
+          };
+        }
+
+        acc[key].totalWins += team.wins;
+        acc[key].totalLosses += team.losses;
+        acc[key].playoffChanceSum += team.playoffChance;
+        if (team.playoffChance >= 50) acc[key].playoffCount++;
+        acc[key].gradePointsSum += getGradePoints(team.grade);
+        acc[key].draftCount++;
+      });
+    });
+
+    const rows = Object.values(acc).map(item => {
+      const totalGames = item.totalWins + item.totalLosses;
+      const winRate = totalGames > 0 ? (item.totalWins / totalGames) : 0;
+      const avgPlayoff = item.draftCount > 0 ? (item.playoffChanceSum / item.draftCount) : 0;
+      const avgGradePoints = item.draftCount > 0 ? (item.gradePointsSum / item.draftCount) : 8.0;
+      const avgGrade = getGradeLetterFromPoints(avgGradePoints);
+
+      return {
+        ...item,
+        winRate,
+        avgPlayoff: Math.round(avgPlayoff),
+        avgGrade
+      };
+    });
+
+    return rows.sort((a, b) => b.winRate - a.winRate || b.avgPlayoff - a.avgPlayoff);
+  }, [historicalDrafts, setup.userStrategy, setup.rankingsBase]);
+
+  const handlePopulateSims = () => {
+    triggerHaptic(Haptics.ImpactFeedbackStyle.Heavy);
+    runSimulationBatches(5000);
+  };
+
+  const handleClearHistory = () => {
+    if (Platform.OS !== 'web') {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(() => {});
+    }
+    clearHistory();
+  };
+
+
+
+  return (
+    <View style={activeStyles.container}>
+      <BackgroundTexture />
+      <SafeAreaView style={activeStyles.safeArea} edges={['top', 'bottom']}>
+        
+        <AppHeader
+          title="DRAFT SCORECARD"
+          subtitle="HIGH-FIDELITY ANALYTICS SUITE"
+        />
+
+        <GradeCard 
+          grade={grade}
+          projectedWins={projectedWins}
+          projectedLosses={projectedLosses}
+          playoffChance={playoffChance}
+        />
+
+        <View style={activeStyles.tabSwitcher}>
+          {['roster', 'coach', 'performance', 'leaderboard', 'board'].map((tab) => (
+            <Pressable 
+              key={tab}
+              style={[activeStyles.tabButton, activeTab === tab && activeStyles.tabButtonActive]}
+              onPress={() => { setActiveTab(tab as any); triggerHaptic(Haptics.ImpactFeedbackStyle.Light); }}
+            >
+              <Text style={[activeStyles.tabButtonText, activeTab === tab && activeStyles.tabButtonTextActive]}>
+                {tab.toUpperCase()}
+              </Text>
+            </Pressable>
+          ))}
+        </View>
+
+        {isSimulating && (
+          <View style={activeStyles.simulatingOverlay}>
+            <ActivityIndicator size="large" color={Colors.hofYellow} />
+            <Text style={activeStyles.simulatingText}>Training AI Bots... {simProgress}%</Text>
+            <View style={activeStyles.overlayProgressBarBg}>
+              <View style={[activeStyles.overlayProgressBarFill, { width: `${simProgress}%` }]} />
+            </View>
+            <Text style={{ fontFamily: Fonts.body, fontSize: 11, color: '#94a3b8', marginTop: 4 }}>
+              Simulating 5,000 leagues to optimize strategy weights
+            </Text>
+          </View>
+        )}
+
         <ScrollView 
-          contentContainerStyle={styles.scrollContent} 
+          contentContainerStyle={activeStyles.scrollContent} 
           showsVerticalScrollIndicator={false}
         >
-          {/* HEADER */}
-          <View style={styles.header}>
-            <Text style={styles.title}>DRAFT ANALYSIS</Text>
-            <Text style={styles.subtitle}>YOUR SIMULATED TEAM SCORECARD</Text>
-          </View>
+          {activeTab === 'roster' && (
+            <RosterTable 
+              roster={roster}
+              setup={setup}
+              draftHistory={draftHistory}
+              userTeamName={getUserTeamName()}
+            />
+          )}
 
-          {/* GRADE DISPLAY CARD */}
-          <View style={[
-            styles.gradeCard, 
-            isHOF && styles.hofGradeCard
-          ]}>
-            {/* Background Watermark */}
-            <View style={styles.watermarkContainer}>
-              <Svg width={180} height={180} viewBox="0 0 24 24" fill="none">
-                <Path
-                  d="M18 2H6C4.9 2 4 2.9 4 4V7C4 8.66 5.34 10 7 10H8.09C8.61 12.3 10.3 14.12 12.5 14.75V19H9C8.45 19 8 19.45 8 20V21C8 21.55 8.45 22 9 22H15C15.55 22 16 21.55 16 21V20C16 19.45 15.55 19 15 19H11.5V14.75C13.7 14.12 15.39 12.3 15.91 10H17C18.66 10 20 8.66 20 7V4C20 2.9 19.1 2 18 2ZM6 8V4H7V8C7 8.55 6.55 9 6 9C5.45 9 5 8.55 5 8V8ZM19 7C19 7.55 18.55 8 18 8H17V4H18V7C18 7.55 18.55 8 19 8Z"
-                  fill={isHOF ? Colors.hofYellow : Colors.primaryAccent}
-                  opacity={isHOF ? 0.08 : 0.04}
-                />
-              </Svg>
-            </View>
-
-            <Text style={[styles.gradeKicker, isHOF && styles.hofText]}>
-              {isHOF ? '🏆 HALL OF FAME RATING' : 'DRAFT GRADE'}
-            </Text>
-
-            <Text style={[styles.gradeLetter, isHOF && styles.hofText]}>
-              {grade}
-            </Text>
-
-            {/* Scorecard stats */}
-            <View style={styles.scoreRow}>
-              <View style={styles.scoreCell}>
-                <Text style={styles.scoreLabel}>VALUE VS ADP</Text>
-                <Text style={[styles.scoreVal, valueScore >= 0 ? styles.positiveScore : styles.negativeScore]}>
-                  {valueScore >= 0 ? `+${valueScore}` : valueScore} picks
+          {activeTab === 'coach' && (
+            <View style={activeStyles.coachContainer}>
+              <View style={activeStyles.coachBubble}>
+                <Text style={activeStyles.coachTitle}>STRATEGY COACH FEEDBACK</Text>
+                <Text style={[activeStyles.coachStatus, coachStrategyAnalysis.success ? activeStyles.coachSuccess : activeStyles.coachWarning]}>
+                  {coachStrategyAnalysis.success ? '🏆 MASTERFUL EXECUTION' : '⚠️ STRATEGIC DEVIATION'}
                 </Text>
+                <Text style={activeStyles.coachFeedback}>{coachStrategyAnalysis.feedback}</Text>
+
+                <Text style={activeStyles.coachSubHeader}>SUGGESTED STRATEGY ALTERATIONS:</Text>
+                {coachStrategyAnalysis.suggestions.map((sug, i) => (
+                  <Text key={i} style={activeStyles.coachSuggestionItem}>
+                    • {sug}
+                  </Text>
+                ))}
               </View>
 
-              <View style={styles.dividerCol} />
+              <Text style={activeStyles.coachSectionTitle}>ROUND-BY-ROUND DRAFT VALUE</Text>
+              <View style={activeStyles.valueList}>
+                {draftHistory.filter(h => h.teamName === getUserTeamName() || h.teamName === 'Your Team').map((pick) => {
+                  const val = pick.player.adp - pick.pickNumber;
+                  const isSteal = val > 0;
+                  const isReach = val < 0;
 
-              <View style={styles.scoreCell}>
-                <Text style={styles.scoreLabel}>PLAYERS DRAFTED</Text>
-                <Text style={styles.scoreVal}>{roster.length}</Text>
+                  return (
+                    <View key={pick.pickNumber} style={activeStyles.valueRow}>
+                      <View style={activeStyles.valueRoundBadge}>
+                        <Text style={activeStyles.valueRoundText}>RD {pick.round}</Text>
+                        <Text style={activeStyles.valuePickText}>PK {pick.pickNumber}</Text>
+                      </View>
+                      
+                      <Image 
+                        source={{ uri: getPlayerHeadshotUrl(pick.player.espnId, pick.player.position, pick.player.team) }} 
+                        style={activeStyles.valueHeadshot}
+                      />
+
+                      <View style={activeStyles.valueInfo}>
+                        <Text style={activeStyles.valueName} numberOfLines={1}>{getDisplayName(pick.player.name)}</Text>
+                        <Text style={activeStyles.valueMeta}>{pick.player.position} · {pick.player.team} · ECR #{pick.player.rank}</Text>
+                      </View>
+
+                      <View style={[
+                        activeStyles.valBadge, 
+                        isSteal && activeStyles.valSteal, 
+                        isReach && activeStyles.valReach
+                      ]}>
+                        <Text style={[
+                          activeStyles.valBadgeText, 
+                          isSteal && activeStyles.valStealText, 
+                          isReach && activeStyles.valReachText
+                        ]}>
+                          {val === 0 ? 'ON ADP' : val > 0 ? `+${val} VAL` : `${val} REACH`}
+                        </Text>
+                      </View>
+                    </View>
+                  );
+                })}
               </View>
             </View>
+          )}
 
-            <Text style={styles.gradeFeedback}>
-              {isHOF && 'Masterful execution. You captured immense draft value across almost every single round.'}
-              {grade === 'A' && 'Outstanding draft. You navigated positional scarcity perfectly and built highly efficient depth.'}
-              {grade === 'B+' && 'Strong performance. Solid roster composition with minimal reaches.'}
-              {grade === 'B' && 'Good draft. A balanced team structure, though you reached slightly on a few selections.'}
-              {grade === 'C' && 'Average draft. Reached on several skill positions; depth could be vulnerable.'}
-              {grade === 'D' && 'Tough draft board. We recommend monitoring active news to repair roster deficits.'}
-            </Text>
-          </View>
+          {activeTab === 'performance' && (
+            <View style={activeStyles.perfContainer}>
+              <View style={activeStyles.telemetryCard}>
+                <Text style={activeStyles.telemetryCardTitle}>SEASON TELEMETRY REPORT</Text>
+                <View style={activeStyles.telemetryStatsRow}>
+                  <View style={activeStyles.telemetryStat}>
+                    <Text style={activeStyles.telemetryStatLabel}>AVG WEEKLY SCORE</Text>
+                    <Text style={activeStyles.telemetryStatVal}>{Math.round(performanceTelemetry.avgScore)}</Text>
+                  </View>
+                  <View style={activeStyles.telemetryStat}>
+                    <Text style={activeStyles.telemetryStatLabel}>TOTAL POINTS FOR</Text>
+                    <Text style={activeStyles.telemetryStatVal}>{performanceTelemetry.ptsScored}</Text>
+                  </View>
+                  <View style={activeStyles.telemetryStat}>
+                    <Text style={activeStyles.telemetryStatLabel}>TOTAL POINTS AGAINST</Text>
+                    <Text style={activeStyles.telemetryStatVal}>{performanceTelemetry.ptsAllowed}</Text>
+                  </View>
+                </View>
+              </View>
 
-          {/* STARTER ROSTER DETAILS */}
-          <View style={styles.rosterSection}>
-            <Text style={styles.sectionTitle}>YOUR FINAL ROSTER</Text>
-            
-            <View style={styles.rosterList}>
-              {roster.map((player, idx) => {
-                const posColor = Colors.positions[player.position];
-                
-                return (
-                  <View key={player.rank} style={styles.playerRow}>
-                    <View style={styles.slotTag}>
-                      <Text style={styles.slotTagText}>SLOT {idx + 1}</Text>
+              <View style={activeStyles.routineGrid}>
+                <View style={[activeStyles.routineCard, { borderColor: '#22c55e33' }]}>
+                  <Text style={activeStyles.routineHeading}>🌟 EXCELS ROUTINELY AT</Text>
+                  <Text style={activeStyles.routineBullet}>• Positional bye-week optimization</Text>
+                  <Text style={activeStyles.routineBullet}>
+                    {valueScore >= 0 
+                      ? '• Capturing premium ADP value slips' 
+                      : '• Stacking high-efficiency starter floor'}
+                  </Text>
+                  <Text style={activeStyles.routineBullet}>• Drafting elite WR vertical weapons</Text>
+                </View>
+
+                <View style={[activeStyles.routineCard, { borderColor: '#ef444433' }]}>
+                  <Text style={activeStyles.routineHeading}>⚠️ FAILS ROUTINELY AT</Text>
+                  <Text style={activeStyles.routineBullet}>• Over-valuing secondary defense/kicker assets</Text>
+                  <Text style={activeStyles.routineBullet}>
+                    {byeConflictCount >= 2 
+                      ? '• Tolerating bye-week roster lockouts' 
+                      : '• Early round reached positional capitalization'}
+                  </Text>
+                  <Text style={activeStyles.routineBullet}>• Neglecting late-round backup QB insurance</Text>
+                </View>
+              </View>
+
+              <Text style={activeStyles.perfSectionTitle}>PROJECTED MATCH PLAYOUTS (14 WEEKS)</Text>
+              <View style={activeStyles.weeklyList}>
+                {performanceTelemetry.weeklyProjections.map((match) => (
+                  <View key={match.week} style={activeStyles.weeklyRow}>
+                    <View style={activeStyles.weeklyRoundLabel}>
+                      <Text style={activeStyles.weeklyRoundText}>WK {match.week}</Text>
                     </View>
                     
-                    <Image 
-                      source={{ uri: getTeamLogoUrl(player.team) }} 
-                      style={styles.teamLogo} 
-                    />
-                    
-                    <View style={styles.playerDetails}>
-                      <Text style={styles.playerName}>{player.name}</Text>
-                      <Text style={styles.playerMeta}>
-                        <Text style={[styles.posLabel, { color: posColor }]}>{player.position}</Text> · {player.team} · BYE {player.bye}
+                    <View style={activeStyles.weeklyRangeContainer}>
+                      <Text style={activeStyles.weeklyRangeLabelText}>VS {match.opponent.toUpperCase()}</Text>
+                      <View style={activeStyles.rangeBarBg}>
+                        <View style={[
+                          activeStyles.rangeBarFill,
+                          {
+                            left: `${Math.max(0, (match.floor - 80) * 100 / 80)}%`,
+                            width: `${Math.max(10, (match.ceiling - match.floor) * 100 / 80)}%`
+                          }
+                        ]} />
+                        <View style={[
+                          activeStyles.rangeDot,
+                          { left: `${Math.max(0, (match.median - 80) * 100 / 80)}%` }
+                        ]} />
+                      </View>
+                      <Text style={activeStyles.weeklyScoreDetail}>
+                        Range: {match.floor} - {match.ceiling} pts · Median: {match.median} pts
                       </Text>
                     </View>
 
-                    <View style={styles.pickDetails}>
-                      <Text style={styles.pickLabel}>PICK</Text>
-                      <Text style={styles.pickVal}>#{idx * 12 + setup.userPosition}</Text>
+                    <View style={[activeStyles.matchOutcomeBadge, match.isWin ? activeStyles.matchWin : activeStyles.matchLoss]}>
+                      <Text style={[activeStyles.matchOutcomeText, match.isWin ? activeStyles.matchWinText : activeStyles.matchLossText]}>
+                        {match.isWin ? `W (${match.median}-${match.oppScore})` : `L (${match.median}-${match.oppScore})`}
+                      </Text>
                     </View>
                   </View>
-                );
-              })}
-            </View>
-          </View>
+                ))}
+              </View>
 
-          {/* ACTIONS */}
-          <View style={styles.actionContainer}>
-            <Pressable style={styles.primaryBtn} onPress={handleRestart}>
-              <Text style={styles.primaryBtnText}>START NEW MOCK DRAFT</Text>
+              <Text style={activeStyles.perfSectionTitle}>QUARTER-BY-QUARTER TELEMETRY</Text>
+              <View style={activeStyles.quarterGrid}>
+                <View style={activeStyles.quarterCard}>
+                  <Text style={activeStyles.quarterTitle}>Q1 (WEEKS 1-4)</Text>
+                  <Text style={activeStyles.quarterSubtitle}>{"\"Early-Season Burst\""}</Text>
+                  <Text style={activeStyles.quarterStat}>STRENGTH: ELITE (94%)</Text>
+                  <Text style={activeStyles.quarterBody}>Your healthy starters carry extreme high-end ADP strength to capture massive early momentum.</Text>
+                </View>
+
+                <View style={activeStyles.quarterCard}>
+                  <Text style={activeStyles.quarterTitle}>Q2 (WEEKS 5-8)</Text>
+                  <Text style={activeStyles.quarterSubtitle}>{"\"Bye Week Navigation\""}</Text>
+                  <Text style={activeStyles.quarterStat}>RATING: {getByeScore()}%</Text>
+                  <Text style={activeStyles.quarterBody}>
+                    {byeConflictCount >= 2 
+                      ? 'Roster contains severe overlapping positional byes. Waiver-wire streams required.' 
+                      : 'Excellent bye dispersion gives you an immense advantage during heavy bye weeks.'}
+                  </Text>
+                </View>
+
+                <View style={activeStyles.quarterCard}>
+                  <Text style={activeStyles.quarterTitle}>Q3 (WEEKS 9-12)</Text>
+                  <Text style={activeStyles.quarterSubtitle}>{"\"Mid-Season Consolidation\""}</Text>
+                  <Text style={activeStyles.quarterStat}>STRENGTH: STABLE (88%)</Text>
+                  <Text style={activeStyles.quarterBody}>Projected starter metrics are locked in. Roster capital guarantees highly consistent double-digit outputs.</Text>
+                </View>
+
+                <View style={activeStyles.quarterCard}>
+                  <Text style={activeStyles.quarterTitle}>Q4 (WEEKS 13-17)</Text>
+                  <Text style={activeStyles.quarterSubtitle}>{"\"Late-Season Playoff Push\""}</Text>
+                  <Text style={activeStyles.quarterStat}>
+                    DEPTH: {benchPlayers.length >= 5 ? 'DEEP (92%)' : 'THIN (64%)'}
+                  </Text>
+                  <Text style={activeStyles.quarterBody}>
+                    {benchPlayers.length >= 5
+                      ? 'Your deep bench ensures you survive late-season attrition and locking playoff runs.'
+                      : 'Roster is thin. A single starting injury severely risks late playoff competitiveness.'}
+                  </Text>
+                </View>
+              </View>
+            </View>
+          )}
+
+          {activeTab === 'leaderboard' && (
+            <View style={activeStyles.lobbyContainer}>
+              <View style={activeStyles.aiPanel}>
+                <Text style={activeStyles.aiPanelTitle}>🤖 BOT MANAGER AI COGNITIVE TELEMETRY</Text>
+                
+                <AILearningChart
+                  botTrainingSims={botTrainingSims}
+                  isSimulating={isSimulating}
+                  simProgress={simProgress}
+                />
+
+                <Text style={activeStyles.aiProgressExplanation}>
+                  {botTrainingSims >= 10000 
+                    ? '🏆 Bots are fully trained! Selection noise is minimized and strategy weights are fully optimized.' 
+                    : '⚡ Bots are currently training. Running simulations decreases decision noise and refines positional strategy parameters.'}
+                </Text>
+
+                <View style={activeStyles.aiActionRow}>
+                  <Pressable style={activeStyles.aiActionBtn} onPress={handlePopulateSims}>
+                    <Text style={activeStyles.aiActionBtnText}>SIMULATE 5,000 LEAGUES</Text>
+                  </Pressable>
+                  <Pressable style={[activeStyles.aiActionBtn, activeStyles.aiClearBtn]} onPress={handleClearHistory}>
+                    <Text style={activeStyles.aiActionBtnTextClear}>RESET DATABASE</Text>
+                  </Pressable>
+                </View>
+              </View>
+
+              <Text style={activeStyles.lobbySectionTitle}>HISTORICAL STANDINGS LOBBY ({historicalDrafts.length.toLocaleString()} DRAFTS)</Text>
+              
+              <StandingsTable
+                leaderboardData={leaderboardData}
+                userTeamName={getUserTeamName()}
+              />
+            </View>
+          )}
+
+          {activeTab === 'board' && (
+            <View style={activeStyles.boardSection}>
+              <View style={activeStyles.boardHeaderCard}>
+                <Text style={activeStyles.boardHeaderTitle}>FULL DRAFT BOARD</Text>
+                <Text style={activeStyles.boardHeaderSub}>
+                  Review the entire 15-round, pick-by-pick league selections. Swipe horizontally to see all teams.
+                </Text>
+              </View>
+
+              <ScrollView horizontal={true} showsHorizontalScrollIndicator={true}>
+                <View style={activeStyles.boardGridContainer}>
+                  <View style={activeStyles.boardRow}>
+                    <View style={activeStyles.boardRoundHeaderCell}>
+                      <Text style={activeStyles.boardRoundHeaderText}>ROUND</Text>
+                    </View>
+                    {Array.from({ length: setup.leagueSize }, (_, idx) => {
+                      const name = getTeamNameForIndex(idx, setup.userPosition);
+                      const isUser = name === getUserTeamName() || name === 'Your Team';
+                      return (
+                        <View 
+                          key={idx} 
+                          style={[
+                            activeStyles.boardTeamHeaderCell, 
+                            isUser && activeStyles.boardTeamHeaderCellUser
+                          ]}
+                        >
+                          <Text style={[activeStyles.boardTeamHeaderText, isUser && activeStyles.boardTeamHeaderTextUser]} numberOfLines={1}>
+                            {isUser ? 'YOUR TEAM' : name.toUpperCase()}
+                          </Text>
+                          <Text style={activeStyles.boardTeamSubText}>
+                            Pick {idx + 1}
+                          </Text>
+                        </View>
+                      );
+                    })}
+                  </View>
+
+                  {Array.from({ length: setup.rounds || 15 }, (_, rIdx) => {
+                    const roundNum = rIdx + 1;
+                    return (
+                      <View key={rIdx} style={activeStyles.boardRow}>
+                        <View style={activeStyles.boardRoundCell}>
+                          <Text style={activeStyles.boardRoundCellText}>RD {roundNum}</Text>
+                        </View>
+
+                        {Array.from({ length: setup.leagueSize }, (_, tIdx) => {
+                          const pick = draftHistory.find(
+                            h => h.round === roundNum && h.teamIndex === tIdx
+                          );
+                          const cellTeamName = getTeamNameForIndex(tIdx, setup.userPosition);
+                          const isUser = cellTeamName === getUserTeamName() || cellTeamName === 'Your Team';
+
+                          if (!pick) {
+                            return (
+                              <View key={tIdx} style={activeStyles.boardPlayerCellEmpty}>
+                                <Text style={activeStyles.boardPlayerTextEmpty}>-</Text>
+                              </View>
+                            );
+                          }
+
+                          const player = pick.player;
+                          const posColor = Colors.positions[player.position as keyof typeof Colors.positions] || '#94a3b8';
+
+                          return (
+                            <View 
+                              key={tIdx} 
+                              style={[
+                                activeStyles.boardPlayerCell,
+                                isUser && activeStyles.boardPlayerCellUser,
+                                { borderLeftColor: posColor, borderLeftWidth: 4 }
+                              ]}
+                            >
+                              <View style={activeStyles.boardCellTopRow}>
+                                <View style={[activeStyles.boardCellPosBadge, { backgroundColor: posColor }]}>
+                                  <Text style={activeStyles.boardCellPosText}>{player.position}</Text>
+                                </View>
+                                <Text style={activeStyles.boardCellPickNumber}>
+                                  #{pick.pickNumber}
+                                </Text>
+                              </View>
+                              <Text style={activeStyles.boardCellName} numberOfLines={1}>
+                                {getDisplayName(player.name)}
+                              </Text>
+                              <Text style={activeStyles.boardCellMeta}>
+                                {player.team || 'FA'} · Bye {player.bye || '-'}
+                              </Text>
+                            </View>
+                          );
+                        })}
+                      </View>
+                    );
+                  })}
+                </View>
+              </ScrollView>
+            </View>
+          )}
+
+          <View style={activeStyles.actionContainer}>
+            <Pressable 
+              style={({ pressed }) => [activeStyles.primaryBtn, pressed && activeStyles.btnPressed]} 
+              onPress={handleRestart}
+            >
+              <Text style={activeStyles.primaryBtnText}>START NEW MOCK DRAFT</Text>
             </Pressable>
 
-            <Pressable style={styles.secondaryBtn} onPress={handleHome}>
-              <Text style={styles.secondaryBtnText}>BACK TO LOBBY</Text>
+            <Pressable 
+              style={({ pressed }) => [activeStyles.secondaryBtn, pressed && activeStyles.btnPressed]} 
+              onPress={handleHome}
+            >
+              <Text style={activeStyles.secondaryBtnText}>EXIT TO LOBBY</Text>
             </Pressable>
           </View>
 
@@ -155,236 +816,10 @@ export default function DraftSummaryScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  safeArea: {
-    flex: 1,
-    alignSelf: 'center',
-    width: '100%',
-    maxWidth: MaxContentWidth,
-  },
-  scrollContent: {
-    paddingHorizontal: Spacing.four,
-    paddingVertical: Spacing.five,
-    gap: Spacing.five,
-  },
-  header: {
-    alignItems: 'center',
-    gap: Spacing.one,
-  },
-  title: {
-    fontFamily: Fonts.headings,
-    fontSize: 32,
-    fontWeight: 'bold',
-    color: Colors.primaryAccent,
-    letterSpacing: -0.5,
-  },
-  subtitle: {
-    fontFamily: Fonts.stats,
-    fontSize: 10,
-    color: Colors.positions.WR, // Blue kicker highlight
-    letterSpacing: 2,
-  },
-  gradeCard: {
-    backgroundColor: Colors.surface,
-    borderColor: '#1a4480',
-    borderWidth: 1,
-    borderRadius: Spacing.three,
-    padding: Spacing.four,
-    alignItems: 'center',
-    position: 'relative',
-    overflow: 'hidden',
-    gap: Spacing.three,
-  },
-  hofGradeCard: {
-    borderColor: Colors.hofYellow,
-    backgroundColor: '#1c1502', // Subtle dark yellow/gold glow overlay
-    shadowColor: Colors.hofYellow,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 10,
-  },
-  watermarkContainer: {
-    position: 'absolute',
-    right: -10,
-    bottom: -15,
-  },
-  gradeKicker: {
-    fontFamily: Fonts.stats,
-    fontSize: 10,
-    color: Colors.secondaryAccent,
-    letterSpacing: 2,
-    fontWeight: 'bold',
-  },
-  hofText: {
-    color: Colors.hofYellow,
-  },
-  gradeLetter: {
-    fontFamily: Fonts.headings,
-    fontSize: 100,
-    fontWeight: '900',
-    color: Colors.primaryAccent,
-    lineHeight: 110,
-  },
-  scoreRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    width: '100%',
-    marginTop: Spacing.one,
-  },
-  scoreCell: {
-    alignItems: 'center',
-    flex: 1,
-    gap: 4,
-  },
-  scoreLabel: {
-    fontFamily: Fonts.stats,
-    fontSize: 8,
-    color: Colors.secondaryAccent,
-    opacity: 0.5,
-    letterSpacing: 1,
-  },
-  scoreVal: {
-    fontFamily: Fonts.stats,
-    fontSize: 16,
-    color: Colors.primaryAccent,
-    fontWeight: 'bold',
-  },
-  positiveScore: {
-    color: Colors.status.success,
-  },
-  negativeScore: {
-    color: Colors.status.danger,
-  },
-  dividerCol: {
-    width: 1,
-    height: 32,
-    backgroundColor: '#1a4480',
-    opacity: 0.3,
-  },
-  gradeFeedback: {
-    fontFamily: Fonts.body,
-    fontSize: 13,
-    color: Colors.secondaryAccent,
-    textAlign: 'center',
-    lineHeight: 18,
-    paddingHorizontal: Spacing.two,
-    opacity: 0.8,
-  },
-  rosterSection: {
-    gap: Spacing.three,
-  },
-  sectionTitle: {
-    fontFamily: Fonts.stats,
-    fontSize: 12,
-    color: Colors.secondaryAccent,
-    opacity: 0.6,
-    letterSpacing: 1.5,
-  },
-  rosterList: {
-    gap: Spacing.two,
-  },
-  playerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: Colors.surface,
-    borderColor: '#0f1d3d',
-    borderWidth: 1,
-    borderRadius: Spacing.two,
-    padding: Spacing.three,
-    gap: Spacing.three,
-    minHeight: 56,
-  },
-  slotTag: {
-    backgroundColor: '#0a1530',
-    borderColor: '#1a4480',
-    borderWidth: 1,
-    paddingVertical: 4,
-    paddingHorizontal: 8,
-    borderRadius: 4,
-    width: 64,
-    alignItems: 'center',
-  },
-  slotTagText: {
-    fontFamily: Fonts.stats,
-    fontSize: 8,
-    color: Colors.secondaryAccent,
-    fontWeight: 'bold',
-  },
-  teamLogo: {
-    width: 36,
-    height: 36,
-  },
-  playerDetails: {
-    flex: 1,
-    gap: 2,
-  },
-  playerName: {
-    fontFamily: Fonts.body,
-    fontSize: 14,
-    color: Colors.primaryAccent,
-    fontWeight: '600',
-  },
-  playerMeta: {
-    fontFamily: Fonts.body,
-    fontSize: 11,
-    color: Colors.secondaryAccent,
-    opacity: 0.6,
-  },
-  posLabel: {
-    fontWeight: 'bold',
-  },
-  pickDetails: {
-    alignItems: 'center',
-  },
-  pickLabel: {
-    fontFamily: Fonts.stats,
-    fontSize: 7,
-    color: Colors.secondaryAccent,
-    opacity: 0.4,
-  },
-  pickVal: {
-    fontFamily: Fonts.stats,
-    fontSize: 11,
-    color: Colors.primaryAccent,
-  },
-  actionContainer: {
-    gap: Spacing.three,
-    marginTop: Spacing.two,
-  },
-  primaryBtn: {
-    backgroundColor: Colors.primaryAccent,
-    borderRadius: Spacing.two,
-    paddingVertical: Spacing.three,
-    minHeight: 52,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  primaryBtnText: {
-    fontFamily: Fonts.headings,
-    fontSize: 15,
-    color: Colors.background,
-    fontWeight: 'bold',
-    letterSpacing: 1,
-  },
-  secondaryBtn: {
-    backgroundColor: 'transparent',
-    borderColor: '#1a4480',
-    borderWidth: 1,
-    borderRadius: Spacing.two,
-    paddingVertical: Spacing.three,
-    minHeight: 52,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  secondaryBtnText: {
-    fontFamily: Fonts.headings,
-    fontSize: 15,
-    color: Colors.primaryAccent,
-    fontWeight: 'bold',
-    letterSpacing: 1,
-  },
-});
+export default function SafeDraftSummaryScreen() {
+  return (
+    <ErrorBoundary>
+      <DraftSummaryScreen />
+    </ErrorBoundary>
+  );
+}

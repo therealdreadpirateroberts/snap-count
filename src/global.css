@@ -7,3 +7,14 @@
   --font-rounded: 'SF Pro Rounded', 'Hiragino Maru Gothic ProN', Meiryo, 'MS PGothic', sans-serif;
   --font-serif: Georgia, 'Times New Roman', serif;
 }
+
+/* Global Reset to eliminate browser margins & prevent horizontal layout spill on mobile viewports */
+html, body, #root {
+  margin: 0 !important;
+  padding: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  overflow-x: hidden !important;
+  background-color: #F8FAFC !important; /* Premium light slate-blue background matching Colors.background */
+  -webkit-text-size-adjust: 100%;
+}

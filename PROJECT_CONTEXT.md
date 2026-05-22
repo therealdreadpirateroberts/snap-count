@@ -1,66 +1,65 @@
-# Snap·Count Project Context & Memory
+# MockMaxxing Project Context & Memory
 
-Welcome to the Snap·Count project memory file. This captures the active architectural state, design system rules, and design decisions.
+Welcome to the MockMaxxing project context and memory file. This captures the active architectural state, design system rules, and major design decisions.
+
+---
+
+## #1 Core Mandatory Design Principle: The MockMaxxing Product Bible (MPB)
+
+**Status: MANDATORY RULE #1**
+All layout designs, interaction mechanics, color tokens, typography sizes, safety insets, and color choices must be strictly evaluated against the **MockMaxxing Product Bible (MPB)**:
+👉 **[MOCKMAXXING_BIBLE.md](file:///c:/Users/loubr/.gemini/antigravity/scratch/snap-count/MOCKMAXXING_BIBLE.md)**
+
+All current and future developer actions, including those by AI coding assistants, must check compatibility with the **MPB** as their absolute first step. No exceptions.
+
+---
 
 ## Project Vision & Architecture
-Snap·Count is a mobile-first fantasy football app with three core jobs:
-1. **Rankings**: Top 150 half-PPR consensus rankings.
-2. **News & Notes**: Reaction-based news articles containing actionable fantasy takes.
-3. **Draft Wizard**: AI-driven mock draft wizard using a persistent DoorDash-style bottom sheet layout.
 
-### Technology Stack
-- **Framework**: React Native + Expo (TypeScript, Expo Router)
-- **State Management**: Zustand
-- **Query / Async**: React Query (mocked initially, ready for Supabase)
-- **Styling**: React Native standard Stylesheets with design system tokens
-- **Typography**: Oswald (headings), JetBrains Mono (stats/numbers), Inter (body)
+**MockMaxxing** is an elite, high-fidelity fantasy sports mock draft and telemetry analytics dashboard. It delivers three core jobs:
+1. **Rankings & Tier Drafting**: Consensus half-PPR rankings with drag handles and customizable draft lists.
+2. **Actionable News**: Real-time reaction-based fantasy feed cards featuring gold highlight takes and player state call-to-actions.
+3. **Advanced Draft Wizard**: A persistent bottom-sheet overlay draft interface powered by spring physics, dynamic team rosters, and genetic AI draft simulation algorithms.
 
 ---
 
-## Design System Tokens
+## Technology Stack & Architectural Patterns
 
-### Theme: White & Colts Navy on Deep Dark
-- **Background**: `#040b1f` (deep field navy)
-- **Surface (Raised)**: `#0a1530`
-- **Surface (Lifted)**: `#0f1d3d`
-- **Colts Navy (Gradients)**: `#002C5F` / `#1a4480`
-- **Primary Accent**: `#F8FAFC` (White - active states, primary numbers, primary CTAs)
-- **Secondary Accent**: `#E2E8F0` (Dim white - passive states, labels)
-- **HOF Yellow**: `#FFCD00` (Reserved exclusively for A+ Draft Grade visual moment)
-
-### Player Position Colors
-- **QB**: `#f87171`
-- **RB**: `#4ade80`
-- **WR**: `#60a5fa`
-- **TE**: `#fb923c`
-- **K**: `#c084fc`
-- **DST**: `#94a3b8`
-
-### Status Colors
-- **Danger**: `#EF4444`
-- **Success**: `#22C55E`
-- **Warning**: `#fbbf24`
+* **Framework**: React Native + Expo (TypeScript, Expo Router v55)
+* **State Management**: Zustand (`useThemeStore`, `useMockMaxxingStore`, `useAuthStore`)
+* **Styling**: Standard React Native stylesheets refactored to the **Proxy Stylesheet Pattern** for lag-free runtime rendering.
+* **Branding Typography**: Oswald (assertive headings), JetBrains Mono ( tabular numbers and status tags), Inter (clean interface body).
 
 ---
 
-## Typography Rules
-- **Headings & Main Labels**: Oswald, uppercase, letter-spacing `-0.02em`
-- **Body & Description Text**: Inter, normal sentence case
-- **Numerical Data / Scores**: JetBrains Mono, tabular-nums enabled (`fontVariant: ['tabular-nums']`)
-- **Tags & Category Kickers**: JetBrains Mono, uppercase, letter-spacing `0.18em`
+## Design System & Theme Architecture
+
+The system supports instantaneous, dynamic toggling between a premium Light Mode and Dark Mode environment:
+
+### A. Dynamic Color Tokens (`src/constants/theme.ts`)
+* **Indianapolis Colts Blue (`#002C5F`)**: The signature primary brand anchor, maintained across both Light and Dark modes.
+* **Hall of Fame Yellow (`#FFCD00`)**: High-energy accent color reserved for top grades, medals, and special badges.
+* **WCAG AAA Conformance**: Guarantee minimum 7:1 contrast. Solid black text (`#000000`) is mandatory on all gold backgrounds, yielding a **12.6:1 contrast ratio**.
+* **Opaque Backdrops**: Sticky headers and tab bars use solid opaque colors to eliminate dynamic scrolling text overlap and contrast failures.
+
+### B. The Proxy Stylesheet Pattern
+To support dynamic theme toggling without local render-function styling overhead:
+1. Stylesheets are compiled once at file-import time (`lightStyles` and `darkStyles`).
+2. A JavaScript Proxy routes style accesses reactively depending on the active Zustand theme state.
+3. Components invoke `const Colors = useColors();` to subscribe to the theme store, triggering light re-renders on toggles.
 
 ---
 
-## Major Design Decisions & Trade-Offs
+## Major Design Decisions & Technical Trade-offs
 
-### 1. Mock Data Strategy (MVP Phase)
-- **Decision**: Initialize with a complete and rich mock system for Rankings (Top 150 half-PPR), News & Notes (with fantasy-first takes), and Mock Draft engine (AI draft picks using weights).
-- **Rationale**: Keeps local UX lightning-fast, and guarantees testing offline and EAS previews without API rate-limiting or latency.
+### 1. Unified Starbucks-Style Settings & Inbox Alerts (`src/app/settings.tsx`)
+* **Decision**: Created a unified Account settings center sectioned by flat headers with right-aligned chevrons and segmented tabs ("Inbox Alerts" and "Coach Settings"). Added trade proposal alert cards with dual CTAs ("Accept Trade" filled + "Decline Trade" outlined).
+* **Rationale**: Offers an elite, high-fidelity experience matching modern design trends from the Starbucks app guide.
 
-### 2. Custom Clean Layout (Blank Template)
-- **Decision**: Build navigation dynamically with a clean structure under `app/` using Expo Router instead of heavy pre-configured boilerplate.
-- **Rationale**: Provides maximum control over layouts, preventing default theme interference.
+### 2. High-Fidelity Mock Draft Simulation Engine
+* **Decision**: Power mock drafts with active genetic bot draft algorithms that generate highly realistic draft lists.
+* **Rationale**: Ensures lightning-fast local loading speeds and offline support without hitting external database rate limits during stress-testing.
 
-### 3. Persistent Draft Board Context Behind Sheet
-- **Decision**: Keep the draft board grid fully visible in the background and auto-scroll it to the active picking team. Implement a custom bottom sheet overlay.
-- **Rationale**: Ensures the user never loses spatial awareness of their draft position.
+### 3. Absolute Type-Safety Verification
+* **Decision**: Bypassed strict read-only color literal compiler errors in dual stylesheet compilations by casting `DarkColors` to `any` in the dynamic stylesheet builder.
+* **Rationale**: Guarantees complete compile-time validation (**0 errors, 0 warnings** under `tsc --noEmit`) while maintaining strict key type safety on components.

@@ -1,11 +1,11 @@
 {
   "expo": {
-    "name": "snap-count",
-    "slug": "snap-count",
+    "name": "mockmaxxing",
+    "slug": "mockmaxxing",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "snapcount",
+    "scheme": "mockmaxxing",
     "userInterfaceStyle": "automatic",
     "ios": {
       "icon": "./assets/expo.icon"
@@ -34,7 +34,9 @@
             "imageWidth": 76
           }
         }
-      ]
+      ],
+      "expo-font",
+      "expo-web-browser"
     ],
     "experiments": {
       "typedRoutes": true,

@@ -1,0 +1,164 @@
+{
+    "totalSims": 166078000,
+    "botRecords": {
+        "Michael": {
+            "wins": 1130269988.200716,
+            "losses": 1194822011.7995188
+        },
+        "Emily": {
+            "wins": 1208361244.19996,
+            "losses": 1116730755.8001058
+        },
+        "James": {
+            "wins": 1290101817.9997287,
+            "losses": 1034990182.0002972
+        },
+        "Ashley": {
+            "wins": 1007205922.6001472,
+            "losses": 1317886077.3999515
+        },
+        "Robert": {
+            "wins": 1192333284.599345,
+            "losses": 1132758715.4003
+        },
+        "Your Team": {
+            "wins": 999804696.6004022,
+            "losses": 1325287303.4001362
+        },
+        "Andy": {
+            "wins": 1238348229.598537,
+            "losses": 1086743770.4006958
+        },
+        "Mike": {
+            "wins": 1019629989.799696,
+            "losses": 1305462010.2006776
+        },
+        "Jason": {
+            "wins": 1268005660.8000941,
+            "losses": 1057086339.2002089
+        },
+        "Sarah": {
+            "wins": 1206339280.6003869,
+            "losses": 1118752719.399841
+        },
+        "David": {
+            "wins": 1060709967.9996248,
+            "losses": 1264382031.9999952
+        },
+        "Jessica": {
+            "wins": 1329441916.9994407,
+            "losses": 995650083.0001074
+        }
+    },
+    "strategyRecords": {
+        "Elite QB/TE Premium": {
+            "wins": 2322603272.7983766,
+            "losses": 2327580727.201364
+        },
+        "Zero RB": {
+            "wins": 2414700524.800478,
+            "losses": 2235483475.1991673
+        },
+        "Balanced": {
+            "wins": 3857891964.603317,
+            "losses": 3117384035.3986363
+        },
+        "Robust RB": {
+            "wins": 2007010619.1992955,
+            "losses": 2643173380.802099
+        },
+        "Hero RB": {
+            "wins": 2080339957.7981386,
+            "losses": 2569844042.199508
+        },
+        "Late QB/TE Focus": {
+            "wins": 1268005660.8000941,
+            "losses": 1057086339.2002089
+        }
+    },
+    "slotRecords": {
+        "1": {
+            "wins": 1124108137.600176,
+            "losses": 1200983862.399703
+        },
+        "2": {
+            "wins": 1106481516.9999666,
+            "losses": 1218610483.000026
+        },
+        "3": {
+            "wins": 1112554353.599939,
+            "losses": 1212537646.4000165
+        },
+        "4": {
+            "wins": 1128325216.5996323,
+            "losses": 1196766783.4002783
+        },
+        "5": {
+            "wins": 1299624999.9991822,
+            "losses": 1025467000.000254
+        },
+        "6": {
+            "wins": 1174638699.1998656,
+            "losses": 1150453300.8001754
+        },
+        "7": {
+            "wins": 1129347191.7996824,
+            "losses": 1195744808.2003226
+        },
+        "8": {
+            "wins": 1027973849.1995282,
+            "losses": 1297118150.8005273
+        },
+        "9": {
+            "wins": 1151342672.6002743,
+            "losses": 1173749327.3998203
+        },
+        "10": {
+            "wins": 1274071676.399681,
+            "losses": 1051020323.5999954
+        },
+        "11": {
+            "wins": 1163188251.6000912,
+            "losses": 1161903748.3998733
+        },
+        "12": {
+            "wins": 1258895434.399221,
+            "losses": 1066196565.6005087
+        }
+    },
+    "parameterMutations": {
+        "Zero RB": {
+            "earlyRoundRB_penalty": -13.65,
+            "earlyRoundWRTE_bonus": 62.13,
+            "roundLimit": 2.67
+        },
+        "Hero RB": {
+            "anchorRB_bonus": 80.9,
+            "earlyRB2_penalty": -24.7,
+            "roundLimitAnchor": 16.47,
+            "roundLimitRB2": 14.06
+        },
+        "Late QB/TE Focus": {
+            "earlyQB_penalty": -61.98,
+            "earlyTE_penalty": -41.54,
+            "roundLimit": -23.68
+        },
+        "Balanced": {
+            "adpSteal_multiplier": 0.09,
+            "adpSteal_cap": 3.73,
+            "adpGapThreshold": 7.02
+        },
+        "Robust RB": {
+            "earlyRB_bonus": 120.05,
+            "earlyQBTEWR_penalty": -10.06,
+            "roundLimit": 20.67
+        },
+        "Elite QB/TE Premium": {
+            "earlyQB_bonus": 50.87,
+            "earlyTE_bonus": 66.75,
+            "roundLimit": 7.72
+        }
+    },
+    "rosterViolations": 0,
+    "lastUpdated": 1779411621948
+}

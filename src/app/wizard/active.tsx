@@ -6,179 +6,31 @@ import {
   Pressable, 
   FlatList, 
   ScrollView, 
-  Image, 
   Animated, 
   Dimensions,
-  TextInput,
   Easing,
-  PanResponder
+  Platform
 } from 'react-native';
+import BottomSheet, { BottomSheetScrollView, BottomSheetView, BottomSheetTextInput } from '@gorhom/bottom-sheet';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { useSnapStore, getTeamIndexForPick, getTeamNameForIndex } from '@/store/useSnapStore';
+import { useDraftStore } from '@/store/useDraftStore';
+import { usePlayerStore } from '@/store/usePlayerStore';
+import { useAuthStore } from '@/store/useAuthStore';
+import { getTeamIndexForPick, getTeamNameForIndex, getUserTeamName } from '@/store/_helpers';
+import { useThemeStore } from '@/store/useThemeStore';
 import { getTeamLogoUrl, Player } from '@/store/mockData';
-import { Colors, Fonts, Spacing, MaxContentWidth } from '@/constants/theme';
+import { Colors, Fonts, Spacing, useColors, LightColors, DarkColors } from '@/constants/theme';
 import BackgroundTexture from '@/components/BackgroundTexture';
-import Svg, { Path, Circle, Rect } from 'react-native-svg';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
+import Svg, { Path, Circle } from 'react-native-svg';
+import { PlayerHeadshot } from '@/components/PlayerHeadshot';
+import SuggestedPlayerRow from '@/components/SuggestedPlayerRow';
+import PlayerRowItem from '@/components/PlayerRowItem';
+import RosterSummaryCard from '@/components/RosterSummaryCard';
 
 const SCREEN_HEIGHT = Dimensions.get('window').height;
 const SCREEN_WIDTH = Dimensions.get('window').width;
-
-// Map top player names to ESPN player IDs for premium headshots
-const getPlayerHeadshotUrl = (name: string, position: string, team?: string) => {
-  const cleanName = name.toLowerCase().replace(/['.-]/g, '').replace(/\s+/g, '').trim();
-  
-  if (position === 'DST' && team) {
-    return getTeamLogoUrl(team);
-  }
-
-  const mapping: { [key: string]: string } = {
-    // QBs
-    'patrickmahomes': '3139477',
-    'joshallen': '3918298',
-    'lamarjackson': '3916387',
-    'jalenhurts': '4040715',
-    'cjstroud': '4432577',
-    'joeburrow': '3915290',
-    'anthonyrichardson': '4432573',
-    'dakprescott': '2578570',
-    'jordanlove': '4038941',
-    'brockpurdy': '4361741',
-    'kylermurray': '3917315',
-    'calebwilliams': '4431611',
-    'jaredgoff': '3122627',
-    'tuatagovailoa': '4241479',
-    'trevorlawrence': '4372247',
-    'kirkcousins': '14880',
-    'jaydendaniels': '4431612',
-    'justinherbert': '4426303',
-
-    // RBs
-    'christianmccaffrey': '3117251',
-    'breecehall': '4426361',
-    'bijanrobinson': '4430807',
-    'saquonbarkley': '3929630',
-    'jonathantaylor': '4242335',
-    'jahmyrgibbs': '4430737',
-    'derrickhenry': '3043078',
-    'kyrenwilliams': '4428800',
-    'devonachane': '4430802',
-    'travisetiennejr': '4239994',
-    'isiahpacheco': '4361517',
-    'jamescook': '4361420',
-    'joshjacobs': '4047648',
-    'alvinkamara': '3054850',
-    'rachaadwhite': '4428340',
-    'joemixon': '3116385',
-    'kennethwalkeriii': '4426338',
-    'davidmontgomery': '4035661',
-    'jamesconner': '3045138',
-    'dandreswift': '4259545',
-    'zamirwhite': '4360310',
-    'raheemmostert': '17458',
-    'najeeharris': '4241457',
-    'jaylenwarren': '4363066',
-    'tonypollard': '3911229',
-    'javontewilliams': '4426336',
-    'brianrobinsonjr': '4241400',
-    'jonathonbrooks': '4431527',
-    'tychandler': '4241398',
-    'devinsingletary': '4040774',
-    'chubahubbard': '4241389',
-    'gusedwards': '3046714',
-    'zachcharbonnet': '4426348',
-    'jeromeford': '4360216',
-    'treybenson': '4431501',
-    'ezekielelliott': '3051392',
-    'blakecorum': '4426354',
-    'ricodowdle': '4046554',
-
-    // WRs
-    'ceedeelamb': '4426377',
-    'tyreekhill': '15818',
-    'justinjefferson': '4262921',
-    'jamarrchase': '4362629',
-    'amonrastbrown': '4361370',
-    'ajbrown': '4047646',
-    'garrettwilson': '4426384',
-    'pukanacua': '4403332',
-    'marvinharrisonjr': '4432571',
-    'davanteadams': '16800',
-    'chrisolave': '4426390',
-    'drakelondon': '4426387',
-    'brandonaiyuk': '4241372',
-    'mikeevans': '16737',
-    'nicocollins': '4426372',
-    'deebosamuelsr': '4047650',
-    'deebosamuel': '4047650',
-    'maliknabers': '4432242',
-    'jaylenwaddle': '4361379',
-    'dkmetcalf': '4047654',
-    'djmoore': '3915416',
-    'devontasmith': '4372074',
-    'stefondiggs': '2976212',
-    'cooperkupp': '2977599',
-    'zayflowers': '4361738',
-    'teehiggins': '4239993',
-    'amaricooper': '2976499',
-    'georgepickens': '4431615',
-    'tankdell': '4372023',
-    'terrymclaurin': '3121422',
-    'christiankirk': '3895856',
-    'chrisgodwin': '3116157',
-    'keenanallen': '15804',
-    'jaydenreed': '4361405',
-    'calvinridley': '3925347',
-    'rasheerice': '4428807',
-    'romeodunze': '4432535',
-    'diontaejohnson': '3915377',
-    'hollywoodbrown': '4040726',
-    'courtlandsutton': '3121424',
-    'jaxonsmithnjigba': '4430869',
-    'laddmcconkey': '4432738',
-    'brianthomasjr': '4432179',
-    'keoncoleman': '4432585',
-    'xavierworthy': '4431614',
-    'curtissamuel': '3116155',
-    'tylerlockett': '2578384',
-    'jakobimeyers': '4038965',
-    'romeodoubs': '4361376',
-
-    // TEs
-    'samlaporta': '4430856',
-    'traviskelce': '15847',
-    'treymcbride': '4430752',
-    'markandrews': '3116162',
-    'daltonkincaid': '4372087',
-    'georgekittle': '3041344',
-    'kylepitts': '4361369',
-    'evanengram': '3116154',
-    'jakeferguson': '4242493',
-    'davidnjoku': '3123075',
-    'brockbowers': '4432569',
-    'dallasgoedert': '3121545',
-    'patfreiermuth': '4361551',
-    'taysomhill': '2974858',
-    'colekmet': '4242540',
-    'hunterhenry': '3045136',
-
-    // Kickers
-    'brandonaubrey': '4682498',
-    'harrisonbutker': '3054840',
-    'justintucker': '15683',
-    'kaimifairbairn': '2971383',
-    'jakeelliott': '3051390',
-    'younghoekoo': '2985659',
-    'jasonsanders': '3917300',
-    'evanmcpherson': '4240030',
-  };
-
-  const id = mapping[cleanName];
-  if (id) {
-    return `https://a.espncdn.com/i/headshots/nfl/players/full/${id}.png`;
-  }
-  return `https://a.espncdn.com/combiner/i?img=/i/headshots/nfl/players/full/default.png&w=350&h=254`;
-};
 
 // Helper to format player names cleanly to First Initial + Last Name
 const getDisplayName = (name: string) => {
@@ -202,24 +54,26 @@ const getPickNumberForCell = (round: number, teamIdx: number, leagueSize: number
   return (round - 1) * leagueSize + teamIdx + 1;
 };
 
-export default function ActiveDraftScreen() {
+function ActiveDraftScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  useColors(); // subscribe to theme changes to trigger re-renders
+  const theme = useThemeStore((state) => state.theme);
+  const isDark = theme === 'dark';
   
   // Store state
-  const setup = useSnapStore((state) => state.setup);
-  const players = useSnapStore((state) => state.players);
-  const draftStatus = useSnapStore((state) => state.draftStatus);
-  const currentPick = useSnapStore((state) => state.currentPick);
-  const draftHistory = useSnapStore((state) => state.draftHistory);
-  const cpuIsThinking = useSnapStore((state) => state.cpuIsThinking);
-  const thinkingCpuName = useSnapStore((state) => state.thinkingCpuName);
+  const setup = useDraftStore((state) => state.setup);
+  const players = usePlayerStore((state) => state.players);
+  const draftStatus = useDraftStore((state) => state.draftStatus);
+  const currentPick = useDraftStore((state) => state.currentPick);
+  const draftHistory = useDraftStore((state) => state.draftHistory);
+  const cpuIsThinking = useDraftStore((state) => state.cpuIsThinking);
+  const thinkingCpuName = useDraftStore((state) => state.thinkingCpuName);
   
   // Store actions
-  const draftPlayer = useSnapStore((state) => state.draftPlayer);
-  const simulateCpuTurn = useSnapStore((state) => state.simulateCpuTurn);
-  const getSuggestedPicks = useSnapStore((state) => state.getSuggestedPicks);
-  const resetDraft = useSnapStore((state) => state.resetDraft);
+  const draftPlayer = useDraftStore((state) => state.draftPlayer);
+  const simulateCpuTurn = useDraftStore((state) => state.simulateCpuTurn);
+  const resetDraft = useDraftStore((state) => state.resetDraft);
 
   // Local UI State
   const [boardViewMode, setBoardViewMode] = useState<'round' | 'roster'>('round');
@@ -230,27 +84,9 @@ export default function ActiveDraftScreen() {
   const [starredIds, setStarredIds] = useState<number[]>([]);
   const [isZoomedOut, setIsZoomedOut] = useState(false);
 
-  // Animated values
-  const sheetHeightAnim = useRef(new Animated.Value(200)).current;
-  const dragHandleActiveAnim = useRef(new Animated.Value(0)).current;
-  const pulseAnim = useRef(new Animated.Value(1)).current;
-
-  // Premium drag handle micro-interaction interpolations
-  const handleWidth = dragHandleActiveAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: [36, 52], // stretches wider when held
-  });
-  const handleOpacity = dragHandleActiveAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0.35, 0.8], // brightens when active
-  });
-  const handleScale = dragHandleActiveAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: [1, 1.3], // slightly grows thicker
-  });
-  
-  // ScrollView references for horizontal auto-scrolling
-  const horizontalBoardScroll = useRef<ScrollView>(null);
+  // Timer and urgent glow states
+  const [timeLeft, setTimeLeft] = useState(setup.pickClock || 60);
+  const glowAnim = useRef(new Animated.Value(0)).current;
 
   // Determine active turn math
   const activeTeamIdx = useMemo(() => {
@@ -261,42 +97,16 @@ export default function ActiveDraftScreen() {
     return activeTeamIdx === setup.userPosition - 1;
   }, [activeTeamIdx, setup]);
 
+  const userName = useAuthStore((state) => state.user?.name) || 'Your Team';
+
   // Roster categories for user's team
   const userRoster = useMemo(() => {
-    return players.filter(p => p.draftedBy === 'Your Team');
-  }, [players]);
-
-  // Dynamic starter counts
-  const starterCounts = useMemo(() => {
-    const qbs = userRoster.filter(p => p.position === 'QB').length;
-    const rbs = userRoster.filter(p => p.position === 'RB').length;
-    const wrs = userRoster.filter(p => p.position === 'WR').length;
-    const tes = userRoster.filter(p => p.position === 'TE').length;
-    const dst = userRoster.filter(p => p.position === 'DST').length;
-    const ks = userRoster.filter(p => p.position === 'K').length;
-    
-    // FLX is any extra RB/WR/TE beyond core starters
-    const extraRbs = Math.max(0, rbs - 2);
-    const extraWrs = Math.max(0, wrs - 3);
-    const extraTes = Math.max(0, tes - 1);
-    const flx = Math.min(1, extraRbs + extraWrs + extraTes);
-
-    return {
-      ALL: userRoster.length,
-      QB: qbs,
-      RB: rbs,
-      WR: wrs,
-      TE: tes,
-      FLX: flx,
-      DST: dst,
-      K: ks
-    };
-  }, [userRoster]);
+    return players.filter(p => p.draftedBy === userName);
+  }, [players, userName]);
 
   // Suggested players
   const suggestedPlayers = useMemo(() => {
     // Get all available players that fit basic roster needs
-    const userRoster = players.filter(p => p.draftedBy === 'Your Team');
     const qbCount = userRoster.filter(p => p.position === 'QB').length;
     const teCount = userRoster.filter(p => p.position === 'TE').length;
     const kCount = userRoster.filter(p => p.position === 'K').length;
@@ -330,7 +140,70 @@ export default function ActiveDraftScreen() {
 
     // Return all suggestions matching filters to allow doom scrolling
     return searchedCandidates;
-  }, [players, currentPick, posFilter, searchQuery, setup]);
+  }, [players, currentPick, posFilter, searchQuery, setup, userRoster]);
+
+  useEffect(() => {
+    // Reset timer when pick changes
+    setTimeLeft(setup.pickClock || 60);
+  }, [currentPick, setup.pickClock]);
+
+  useEffect(() => {
+    if (draftStatus !== 'drafting') return;
+    
+    // Only count down on user's turn
+    if (!isUserTurn) return;
+
+    const timer = setInterval(() => {
+      setTimeLeft((prev) => {
+        if (prev <= 1) {
+          clearInterval(timer);
+          // Auto draft top player if time runs out
+          if (suggestedPlayers.length > 0) {
+            draftPlayer(suggestedPlayers[0].rank, activeTeamIdx, userName);
+          }
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [currentPick, isUserTurn, draftStatus, suggestedPlayers, draftPlayer, activeTeamIdx, userName]);
+
+  useEffect(() => {
+    if (isUserTurn && timeLeft < 5 && draftStatus === 'drafting') {
+      const glow = Animated.loop(
+        Animated.sequence([
+          Animated.timing(glowAnim, {
+            toValue: 0.8,
+            duration: 500,
+            useNativeDriver: false,
+          }),
+          Animated.timing(glowAnim, {
+            toValue: 0.1,
+            duration: 500,
+            useNativeDriver: false,
+          }),
+        ])
+      );
+      glow.start();
+      return () => {
+        glow.stop();
+        glowAnim.setValue(0);
+      };
+    } else {
+      glowAnim.setValue(0);
+    }
+  }, [isUserTurn, timeLeft, draftStatus]);
+
+  const bottomSheetRef = useRef<BottomSheet>(null);
+  const snapPoints = useMemo(() => [88 + insets.bottom, SCREEN_HEIGHT * 0.92], [insets.bottom]);
+  const pulseAnim = useRef(new Animated.Value(1)).current;
+  
+  // ScrollView references for horizontal auto-scrolling
+  const horizontalBoardScroll = useRef<ScrollView>(null);
+
+  // Variables moved to the top of components to resolve temporal dead zone issues
 
   // Filtered available list for Rankings tab
   const filteredRankings = useMemo(() => {
@@ -376,119 +249,14 @@ export default function ActiveDraftScreen() {
 
   const cellHeight = isZoomedOut ? 48 : 72;
 
-  // Keep refs of sheetMode and isUserTurn to avoid stale closure in PanResponder callbacks
-  const sheetModeRef = useRef(sheetMode);
-  sheetModeRef.current = sheetMode;
-
-  const isUserTurnRef = useRef(isUserTurn);
-  isUserTurnRef.current = isUserTurn;
-
-  // Bottom Sheet Swipe Dragging (PanResponder) Setup
-  const lastSheetHeight = useRef(200);
-  const gestureStartHeight = useRef(200);
-
-  useEffect(() => {
-    const listener = sheetHeightAnim.addListener(({ value }) => {
-      lastSheetHeight.current = value;
-    });
-    return () => {
-      sheetHeightAnim.removeListener(listener);
-    };
-  }, [sheetHeightAnim]);
-
-  const panResponder = useRef(
-    PanResponder.create({
-      onStartShouldSetPanResponder: () => true,
-      onMoveShouldSetPanResponder: (_, gestureState) => {
-        // Only trigger if movement is primarily vertical
-        return Math.abs(gestureState.dy) > 5 && Math.abs(gestureState.dy) > Math.abs(gestureState.dx);
-      },
-      onPanResponderGrant: () => {
-        sheetHeightAnim.stopAnimation();
-        gestureStartHeight.current = lastSheetHeight.current;
-
-        // Visual drag handle scale micro-interaction
-        Animated.spring(dragHandleActiveAnim, {
-          toValue: 1,
-          useNativeDriver: false,
-          friction: 8,
-          tension: 40,
-        }).start();
-      },
-      onPanResponderMove: (_, gestureState) => {
-        const collapsedHeight = 80;
-        const fullHeight = SCREEN_HEIGHT * 0.92;
-        let newHeight = gestureStartHeight.current - gestureState.dy;
-
-        // Apply high-fidelity rubber-band resistance when dragging beyond boundaries
-        if (newHeight > fullHeight) {
-          const overflow = newHeight - fullHeight;
-          newHeight = fullHeight + overflow * 0.25; // 25% sensitivity beyond max
-        } else if (newHeight < collapsedHeight) {
-          const underflow = collapsedHeight - newHeight;
-          newHeight = collapsedHeight - underflow * 0.25; // 25% sensitivity beyond min
-        }
-
-        sheetHeightAnim.setValue(newHeight);
-      },
-      onPanResponderRelease: (_, gestureState) => {
-        // Return drag handle to original state
-        Animated.spring(dragHandleActiveAnim, {
-          toValue: 0,
-          useNativeDriver: false,
-          friction: 8,
-          tension: 40,
-        }).start();
-
-        const collapsedHeight = 80;
-        const fullHeight = SCREEN_HEIGHT * 0.92;
-        const midPoint = (collapsedHeight + fullHeight) / 2;
-
-        const currentHeight = lastSheetHeight.current;
-        let targetMode = sheetModeRef.current;
-
-        // Premium physics snap calculations based on finger momentum/velocity and position
-        const vy = gestureState.vy;
-        const velocityThreshold = 0.35; // Swipe speed threshold in px/ms
-
-        if (Math.abs(vy) > velocityThreshold) {
-          // Flick detection
-          if (vy < 0) {
-            targetMode = 'full'; // Swipe up expands
-          } else {
-            targetMode = 'collapsed'; // Swipe down collapses
-          }
-        } else {
-          // Slow drag - snap based on proximity to midpoint
-          if (currentHeight > midPoint) {
-            targetMode = 'full';
-          } else {
-            targetMode = 'collapsed';
-          }
-        }
-
-        // Synchronize state
-        setSheetMode(targetMode);
-
-        const targetHeight = targetMode === 'collapsed' ? collapsedHeight : fullHeight;
-
-        // Premium damped snap animation
-        Animated.spring(sheetHeightAnim, {
-          toValue: targetHeight,
-          useNativeDriver: false,
-          bounciness: 5,
-          speed: 12,
-        }).start();
-      }
-    })
-  ).current;
-
   // 1. CPU Simulation Trigger
   useEffect(() => {
     if (draftStatus === 'drafting' && !isUserTurn) {
       simulateCpuTurn(() => {
-        // When CPU turn ends and user is back on the clock, open the sheet fully to draft
-        setSheetMode('full');
+        // When CPU turn ends and user is back on the clock, open the sheet fully to draft with timeout safety
+        setTimeout(() => {
+          bottomSheetRef.current?.expand();
+        }, 50);
       });
     }
   }, [currentPick, isUserTurn, draftStatus]);
@@ -500,10 +268,19 @@ export default function ActiveDraftScreen() {
     }
   }, [draftStatus]);
 
+  // 2.3 Setup Redirection Trigger (Safety net to prevent user getting stuck on blank board during reload/resets)
+  useEffect(() => {
+    if (draftStatus === 'setup') {
+      router.replace('/wizard/setup');
+    }
+  }, [draftStatus]);
+
   // 2.5 Auto-expand to full sheet when it is the user's pick
   useEffect(() => {
     if (draftStatus === 'drafting' && isUserTurn) {
-      setSheetMode('full');
+      setTimeout(() => {
+        bottomSheetRef.current?.expand();
+      }, 50);
     }
   }, [isUserTurn, draftStatus]);
 
@@ -527,7 +304,7 @@ export default function ActiveDraftScreen() {
     );
     pulse.start();
     return () => pulse.stop();
-  }, []);
+  }, [pulseAnim]);
 
   // 4. Auto scroll horizontal board to keep active pick column visible
   useEffect(() => {
@@ -550,33 +327,31 @@ export default function ActiveDraftScreen() {
     }
   }, [currentPick, activeTeamIdx, isZoomedOut]);
 
-  // 5. Bottom sheet height animations
-  useEffect(() => {
-    const targetHeight = sheetMode === 'collapsed' ? 80 : SCREEN_HEIGHT * 0.92;
-
-    if (Math.abs(lastSheetHeight.current - targetHeight) > 10) {
-      Animated.spring(sheetHeightAnim, {
-        toValue: targetHeight,
-        useNativeDriver: false,
-        friction: 8,
-        tension: 40,
-      }).start();
-    }
-  }, [sheetMode, isUserTurn]);
-
-  const handleHandleTap = () => {
-    if (sheetMode === 'collapsed') {
-      setSheetMode('full');
-    } else {
+  const handleSheetChange = (index: number) => {
+    if (index <= 0) {
       setSheetMode('collapsed');
+    } else {
+      setSheetMode('full');
     }
   };
 
+  const handleHandleTap = () => {
+    if (sheetMode === 'collapsed') {
+      bottomSheetRef.current?.expand();
+    } else {
+      bottomSheetRef.current?.collapse();
+    }
+  };
+
+  if (draftStatus === 'setup') {
+    return null;
+  }
+
   const handleDraft = (player: Player) => {
-    draftPlayer(player.rank, activeTeamIdx, 'Your Team');
+    draftPlayer(player.rank, activeTeamIdx, userName);
     setStarredIds(starredIds.filter(id => id !== player.rank));
     setSearchQuery('');
-    setSheetMode('collapsed');
+    bottomSheetRef.current?.collapse();
   };
 
   const handleExit = () => {
@@ -636,7 +411,7 @@ export default function ActiveDraftScreen() {
         </View>
 
         {/* MAIN BOARD SECTION */}
-        <Animated.View style={[styles.boardContainer, { marginBottom: sheetHeightAnim }]}>
+        <View style={[styles.boardContainer, { marginBottom: 88 + insets.bottom }]}>
           
           {boardViewMode === 'round' ? (
             /* BY ROUND: HORIZONTAL SCROLLABLE GRID MATRIX */
@@ -689,7 +464,7 @@ export default function ActiveDraftScreen() {
                                 isCurrent && styles.gridCellCurrent,
                                 isUser && styles.gridCellUser,
                                 { width: cellWidth, height: cellHeight },
-                                player && isZoomedOut && { backgroundColor: Colors.positions[player.position] }
+                                player && isZoomedOut && { backgroundColor: Colors.positions[player.position as keyof typeof Colors.positions] || Colors.surface }
                               ]}
                             >
                               {player ? (
@@ -708,8 +483,8 @@ export default function ActiveDraftScreen() {
                                   </View>
                                 ) : (
                                   /* STANDARD DRAFTED VIEW */
-                                  <View style={[styles.gridPlayerBlock, { borderLeftColor: Colors.positions[player.position] }]}>
-                                    <Image source={{ uri: getPlayerHeadshotUrl(player.name, player.position, player.team) }} style={styles.gridHeadshot} />
+                                  <View style={[styles.gridPlayerBlock, { borderLeftColor: Colors.positions[player.position as keyof typeof Colors.positions] || Colors.coltsNavyLight }]}>
+                                    <PlayerHeadshot name={player.name} position={player.position} team={player.team} style={styles.gridHeadshot} />
                                     <View style={styles.gridPlayerDetails}>
                                       <Text style={styles.gridPlayerName} numberOfLines={1}>
                                         {getDisplayName(player.name)}
@@ -729,7 +504,7 @@ export default function ActiveDraftScreen() {
                                         isUser ? styles.onClockPulseUserCompact : styles.onClockPulseCpuCompact,
                                         { transform: [{ scale: pulseAnim }] }
                                       ]}>
-                                        <Text style={styles.onClockTextCompact}>{isUser ? "YOU" : "CPU"}</Text>
+                                        <Text style={[styles.onClockTextCompact, isUser && { color: isDark ? Colors.hofYellow : '#000000' }]}>{isUser ? "YOU" : "CPU"}</Text>
                                       </Animated.View>
                                     ) : (
                                       /* STANDARD ON-CLOCK VIEW */
@@ -738,7 +513,7 @@ export default function ActiveDraftScreen() {
                                         isUser ? styles.onClockPulseUser : styles.onClockPulseCpu,
                                         { transform: [{ scale: pulseAnim }] }
                                       ]}>
-                                        <Text style={[styles.onClockText, isUser && { color: Colors.hofYellow }]}>{isUser ? "YOUR PICK!" : "PICKING..."}</Text>
+                                        <Text style={[styles.onClockText, isUser && { color: isDark ? Colors.hofYellow : '#000000' }]}>{isUser ? "YOUR PICK!" : "PICKING..."}</Text>
                                         <Svg width={12} height={12} viewBox="0 0 24 24" fill="none" style={styles.clockIcon}>
                                           <Circle cx={12} cy={12} r={9} stroke={isUser ? Colors.hofYellow : "#60a5fa"} strokeWidth={2.5} />
                                           <Path d="M12 7V12L15 14" stroke={isUser ? Colors.hofYellow : "#60a5fa"} strokeWidth={2.5} />
@@ -771,1028 +546,822 @@ export default function ActiveDraftScreen() {
                 const rosterPicks = draftHistory.filter(h => h.teamIndex === teamIdx);
 
                 return (
-                  <View key={teamIdx} style={[styles.rosterCard, isUser && styles.rosterCardUser]}>
-                    <Text style={[styles.rosterCardTitle, isUser && styles.rosterCardTitleUser]}>
-                      {isUser ? "YOUR TEAM" : name.toUpperCase()}
-                    </Text>
-                    <View style={styles.rosterCardGrid}>
-                      {rosterPicks.map((pick) => (
-                        <View key={pick.pickNumber} style={styles.rosterCardPick}>
-                          <Text style={[styles.rosterPickNum, { color: Colors.positions[pick.player.position] }]}>
-                            {pick.round} · {pick.player.position}
-                          </Text>
-                          <Text style={styles.rosterPickName} numberOfLines={1}>{pick.player.name}</Text>
-                        </View>
-                      ))}
-                      {rosterPicks.length === 0 && (
-                        <Text style={styles.rosterCardEmpty}>No picks yet.</Text>
-                      )}
-                    </View>
-                  </View>
+                  <RosterSummaryCard 
+                    key={teamIdx}
+                    teamName={name}
+                    isUser={isUser}
+                    rosterPicks={rosterPicks}
+                    currentSlots={setup.rosterSlots || undefined}
+                  />
                 );
               })}
             </ScrollView>
           )}
 
-        </Animated.View>
+        </View>
 
         {/* BOTTOM SHEET WIDGET (Sleeper style) */}
-        <Animated.View style={[
-          styles.sheet,
-          { 
-            height: sheetHeightAnim, 
-            paddingBottom: insets.bottom + Spacing.two 
-          }
-        ]}>
-          
-          {/* Drag Handle Area */}
-          <View {...panResponder.panHandlers} style={styles.dragHandleContainer}>
-            <Pressable onPress={handleHandleTap} style={styles.dragHandleHitbox}>
-              <Animated.View style={[
-                styles.dragHandle, 
-                { 
-                  width: handleWidth, 
-                  opacity: handleOpacity, 
-                  transform: [{ scale: handleScale }] 
-                }
-              ]} />
-            </Pressable>
-          </View>
-
-          {/* ON THE CLOCK HEADER */}
-          <View {...panResponder.panHandlers} style={styles.sheetHeader}>
-            <View style={styles.clockRow}>
-              {isUserTurn ? (
+        <BottomSheet
+          ref={bottomSheetRef}
+          snapPoints={snapPoints}
+          onChange={handleSheetChange}
+          backgroundStyle={{
+            backgroundColor: Colors.surface,
+            borderTopLeftRadius: 24,
+            borderTopRightRadius: 24,
+            borderTopWidth: 1.5,
+            borderTopColor: Colors.coltsNavyLight,
+          }}
+          handleIndicatorStyle={{
+            backgroundColor: '#64748b',
+            opacity: 0.35,
+            width: 36,
+            height: 4,
+          }}
+        >
+          <BottomSheetView style={[styles.bottomSheetViewContent, { paddingBottom: insets.bottom + Spacing.two }]}>
+            
+            {/* ON THE CLOCK HEADER BANNER */}
+            <Pressable onPress={handleHandleTap} style={styles.sheetHeaderBanner}>
+              {/* Subtle orange glow pulse overlay */}
+              <Animated.View 
+                style={[
+                  StyleSheet.absoluteFillObject, 
+                  { 
+                    backgroundColor: 'rgba(255, 87, 34, 0.25)', 
+                    opacity: glowAnim,
+                    borderTopLeftRadius: 24,
+                    borderTopRightRadius: 24,
+                  }
+                ]} 
+                pointerEvents="none" 
+              />
+              <View style={styles.clockRow}>
                 <View style={styles.userClockWrapper}>
-                  <Text style={styles.userClockText}>Your Pick</Text>
-                  <Animated.View style={[styles.userPulseDot, { transform: [{ scale: pulseAnim }] }]} />
+                  {/* Left side: pulsing Penalty-Yellow dot */}
+                  <Animated.View 
+                    style={[
+                      styles.yellowPulseDot, 
+                      { transform: [{ scale: pulseAnim }] }
+                    ]} 
+                  />
+                  <Text style={styles.userClockText}>
+                    {isUserTurn ? "YOU'RE ON THE CLOCK" : `${(thinkingCpuName || 'CPU').toUpperCase()} IS PICKING`}
+                  </Text>
                 </View>
-              ) : (
-                <View style={styles.cpuClockWrapper}>
-                  <Text style={styles.cpuClockText}>{thinkingCpuName || 'CPU'} is picking</Text>
-                  <Animated.View style={[styles.cpuPulseDot, { transform: [{ scale: pulseAnim }] }]} />
+                
+                <View style={styles.timerRightContainer}>
+                  {isUserTurn && (
+                    <Text 
+                      style={[
+                        styles.timerText, 
+                        { color: timeLeft < 15 ? '#FF5722' : '#FFC107' }
+                      ]}
+                    >
+                      {timeLeft}s
+                    </Text>
+                  )}
+                  <Text style={styles.sheetOverallPick}>
+                    Pick {currentPick} (Round {Math.ceil(currentPick / setup.leagueSize)})
+                  </Text>
                 </View>
-              )}
-              <Text style={styles.sheetOverallPick}>Pick {currentPick} (Round {Math.ceil(currentPick / setup.leagueSize)})</Text>
-            </View>
-          </View>
-
-
-
-          {/* EXPANDED VIEW: TABS & CONTENT */}
-          {sheetMode !== 'collapsed' && (
-            <View style={styles.expandedWrapper}>
-              
-              {/* TAB ROW */}
-              <View style={styles.tabsRow}>
-                {[
-                  { id: 'suggested', label: 'Suggested' },
-                  { id: 'rankings', label: 'Rankings' },
-                  { id: 'queue', label: `Queue (${queuedPlayers.length})` },
-                  { id: 'roster', label: `My Team` }
-                ].map((t) => {
-                  const active = activeTab === t.id;
-                  return (
-                    <Pressable key={t.id} style={[styles.tabBtn, active && styles.tabBtnActive]} onPress={() => setActiveTab(t.id as any)}>
-                      <Text style={[styles.tabBtnText, active && styles.tabBtnTextActive]}>{t.label}</Text>
-                    </Pressable>
-                  );
-                })}
               </View>
+            </Pressable>
 
-              {/* PERSISTENT SEARCH & POSITION FILTER BLOCK */}
-              <View style={styles.searchBlock}>
-                <TextInput
-                  style={styles.sheetSearchInput}
-                  placeholder={`Search ${activeTab === 'suggested' ? 'suggestions' : activeTab === 'queue' ? 'queue' : activeTab === 'roster' ? 'roster' : 'players'}...`}
-                  placeholderTextColor="#64748b"
-                  value={searchQuery}
-                  onChangeText={setSearchQuery}
-                  autoCorrect={false}
-                  autoCapitalize="none"
-                />
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.posChipsScroll}>
-                  {(['ALL', 'QB', 'RB', 'WR', 'TE', 'K', 'DST'] as const).map((filter) => {
-                    const active = posFilter === filter;
+            {/* EXPANDED VIEW: TABS & CONTENT */}
+            <View style={styles.expandedWrapper}>
+                
+                {/* TAB ROW */}
+                <View style={styles.tabsRow}>
+                  {[
+                    { id: 'suggested', label: 'Suggested' },
+                    { id: 'rankings', label: 'Rankings' },
+                    { id: 'queue', label: `Queue (${queuedPlayers.length})` },
+                    { id: 'roster', label: `My Team` }
+                  ].map((t) => {
+                    const active = activeTab === t.id;
                     return (
-                      <Pressable 
-                        key={filter} 
-                        style={[styles.posChip, active && styles.posChipActive]} 
-                        onPress={() => setPosFilter(filter)}
-                      >
-                        <Text style={[styles.posChipText, active && styles.posChipTextActive]}>{filter}</Text>
+                      <Pressable key={t.id} style={[styles.tabBtn, active && styles.tabBtnActive]} onPress={() => setActiveTab(t.id as any)}>
+                        <Text style={[styles.tabBtnText, active && styles.tabBtnTextActive]}>{t.label}</Text>
                       </Pressable>
                     );
                   })}
-                </ScrollView>
-              </View>
+                </View>
 
-              {/* TAB CONTENTS */}
-              <View style={styles.sheetListContent}>
-                
-                {/* SUGGESTED TAB */}
-                {activeTab === 'suggested' && (
-                  <ScrollView contentContainerStyle={styles.expandedListScroll} showsVerticalScrollIndicator={false}>
-                    {suggestedPlayers.map((player, idx) => {
-                      const isStarred = starredIds.includes(player.rank);
-                      const expertPercent = idx === 0 ? '86%' : idx === 1 ? '14%' : '0%';
+                {/* PERSISTENT SEARCH & POSITION FILTER BLOCK */}
+                <View style={styles.searchBlock}>
+                  <BottomSheetTextInput
+                    style={styles.sheetSearchInput}
+                    placeholder={`Search ${activeTab === 'suggested' ? 'suggestions' : activeTab === 'queue' ? 'queue' : activeTab === 'roster' ? 'roster' : 'players'}...`}
+                    placeholderTextColor="#64748b"
+                    value={searchQuery}
+                    onChangeText={setSearchQuery}
+                    autoCorrect={false}
+                    autoCapitalize="none"
+                  />
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.posChipsScroll}>
+                    {(['ALL', 'QB', 'RB', 'WR', 'TE', 'K', 'DST'] as const).map((filter) => {
+                      const active = posFilter === filter;
                       return (
-                        <View key={player.rank} style={styles.suggestedItem}>
-                          <Image source={{ uri: getPlayerHeadshotUrl(player.name, player.position, player.team) }} style={styles.suggestedHeadshot} />
-                          <View style={styles.suggestedInfo}>
-                            <View style={styles.suggestedHeaderRow}>
-                              <Text style={styles.suggestedName} numberOfLines={1}>{player.name}</Text>
-                              <View style={[styles.posBadge, { borderColor: Colors.positions[player.position] }]}>
-                                <Text style={[styles.posBadgeText, { color: Colors.positions[player.position] }]}>{player.posRank}</Text>
-                              </View>
-                            </View>
-                            <Text style={styles.suggestedSub}>{player.team} · Bye {player.bye} · ECR {player.rank}</Text>
-                          </View>
-                          
-                          <View style={styles.suggestedActions}>
-                            <View style={styles.expertCol}>
-                              <Text style={styles.expertVal}>{expertPercent}</Text>
-                              <Text style={styles.expertLbl}>Experts</Text>
-                            </View>
-                            <Pressable style={styles.starBtn} onPress={() => toggleStar(player.rank)}>
-                              <Svg width={16} height={16} viewBox="0 0 24 24" fill={isStarred ? "#fbbf24" : "none"}>
-                                <Path d="M12 17.27L18.18 21L16.54 13.97L22 9.24L14.81 8.62L12 2L9.19 8.62L2 9.24L7.46 13.97L5.82 21L12 17.27Z" stroke={isStarred ? "#fbbf24" : "#94a3b8"} strokeWidth={2} />
-                              </Svg>
-                            </Pressable>
-                            <Pressable 
-                              style={[styles.draftBtn, !isUserTurn && styles.draftBtnDisabled]} 
-                              disabled={!isUserTurn}
-                              onPress={() => handleDraft(player)}
-                            >
-                              <Text style={styles.draftBtnText}>Draft</Text>
-                            </Pressable>
-                          </View>
-                        </View>
-                      );
-                    })}
-                  </ScrollView>
-                )}
-
-                {/* RANKINGS TAB (WITH TIERS) */}
-                {activeTab === 'rankings' && (
-                  <ScrollView contentContainerStyle={styles.expandedListScroll} showsVerticalScrollIndicator={false}>
-                    {filteredRankings.map((player) => {
-                      const isStarred = starredIds.includes(player.rank);
-                      
-                      // Inject Tier Headings based on Rank
-                      const showTierHeader = player.rank === 1 || player.rank === 6 || player.rank === 16 || player.rank === 31 || player.rank === 51;
-                      let tierLabel = '';
-                      let tierColor = '#ef4444'; // Red
-                      if (player.rank === 1) { tierLabel = 'TIER 1'; tierColor = '#ef4444'; }
-                      else if (player.rank === 6) { tierLabel = 'TIER 2'; tierColor = '#fbbf24'; }
-                      else if (player.rank === 16) { tierLabel = 'TIER 3'; tierColor = '#fb923c'; }
-                      else if (player.rank === 31) { tierLabel = 'TIER 4'; tierColor = '#60a5fa'; }
-                      else if (player.rank === 51) { tierLabel = 'TIER 5'; tierColor = '#4ade80'; }
-
-                      return (
-                        <View key={player.rank}>
-                          {showTierHeader && (
-                            <View style={[styles.tierHeader, { borderBottomColor: tierColor }]}>
-                              <Text style={[styles.tierHeaderText, { color: tierColor }]}>{tierLabel}</Text>
-                            </View>
-                          )}
-                          <View style={styles.rankingsRowItem}>
-                            <Text style={styles.rankingsRowRank}>{player.rank}</Text>
-                            <Image source={{ uri: getPlayerHeadshotUrl(player.name, player.position, player.team) }} style={styles.rankingsRowHeadshot} />
-                            <View style={styles.rankingsRowInfo}>
-                              <Text style={styles.rankingsRowName} numberOfLines={1}>{player.name}</Text>
-                              <Text style={styles.rankingsRowMeta}>
-                                <Text style={{ color: Colors.positions[player.position], fontWeight: 'bold' }}>{player.posRank}</Text> · {player.team} · Bye {player.bye}
-                              </Text>
-                            </View>
-                            <Pressable style={styles.starBtnSmall} onPress={() => toggleStar(player.rank)}>
-                              <Svg width={16} height={16} viewBox="0 0 24 24" fill={isStarred ? "#fbbf24" : "none"}>
-                                <Path d="M12 17.27L18.18 21L16.54 13.97L22 9.24L14.81 8.62L12 2L9.19 8.62L2 9.24L7.46 13.97L5.82 21L12 17.27Z" stroke={isStarred ? "#fbbf24" : "#94a3b8"} strokeWidth={2} />
-                              </Svg>
-                            </Pressable>
-                            <Pressable 
-                              style={[styles.draftBtnSmall, !isUserTurn && styles.draftBtnDisabled]} 
-                              disabled={!isUserTurn}
-                              onPress={() => handleDraft(player)}
-                            >
-                              <Text style={styles.draftBtnTextSmall}>Draft</Text>
-                            </Pressable>
-                          </View>
-                        </View>
-                      );
-                    })}
-                    {filteredRankings.length === 0 && (
-                      <Text style={styles.emptySearch}>No matching players available.</Text>
-                    )}
-                  </ScrollView>
-                )}
-
-                {/* QUEUE TAB */}
-                {activeTab === 'queue' && (
-                  <ScrollView contentContainerStyle={styles.expandedListScroll} showsVerticalScrollIndicator={false}>
-                    {queuedPlayers.map((player) => (
-                      <View key={player.rank} style={styles.rankingsRowItem}>
-                        <Text style={styles.rankingsRowRank}>{player.rank}</Text>
-                        <Image source={{ uri: getPlayerHeadshotUrl(player.name, player.position, player.team) }} style={styles.rankingsRowHeadshot} />
-                        <View style={styles.rankingsRowInfo}>
-                          <Text style={styles.rankingsRowName} numberOfLines={1}>{player.name}</Text>
-                          <Text style={styles.rankingsRowMeta}>
-                            <Text style={{ color: Colors.positions[player.position], fontWeight: 'bold' }}>{player.posRank}</Text> · {player.team}
-                          </Text>
-                        </View>
-                        <Pressable style={styles.starBtnSmall} onPress={() => toggleStar(player.rank)}>
-                          <Svg width={16} height={16} viewBox="0 0 24 24" fill="#fbbf24">
-                            <Path d="M12 17.27L18.18 21L16.54 13.97L22 9.24L14.81 8.62L12 2L9.19 8.62L2 9.24L7.46 13.97L5.82 21L12 17.27Z" stroke="#fbbf24" strokeWidth={2} />
-                          </Svg>
-                        </Pressable>
                         <Pressable 
-                          style={[styles.draftBtnSmall, !isUserTurn && styles.draftBtnDisabled]} 
-                          disabled={!isUserTurn}
-                          onPress={() => handleDraft(player)}
+                          key={filter} 
+                          style={[styles.posChip, active && styles.posChipActive]} 
+                          onPress={() => setPosFilter(filter)}
                         >
-                          <Text style={styles.draftBtnTextSmall}>Draft</Text>
+                          <Text style={[styles.posChipText, active && styles.posChipTextActive]}>{filter}</Text>
                         </Pressable>
-                      </View>
-                    ))}
-                    {queuedPlayers.length === 0 && (
-                      <Text style={styles.emptySearch}>
-                        {players.filter(p => !p.draftedBy && starredIds.includes(p.rank)).length === 0 
-                          ? "Queue is empty. Tap the star icon on players to queue them." 
-                          : "No matching players in queue."}
-                      </Text>
-                    )}
+                      );
+                    })}
                   </ScrollView>
-                )}
+                </View>
 
-                {/* MY TEAM ROSTER TAB */}
-                {activeTab === 'roster' && (
-                  <ScrollView contentContainerStyle={styles.expandedListScroll} showsVerticalScrollIndicator={false}>
-                    {filteredUserRoster.map((player, idx) => (
-                      <View key={player.rank} style={styles.rankingsRowItem}>
-                        <View style={styles.rosterCardIndex}>
-                          <Text style={styles.rosterCardIndexText}>{idx + 1}</Text>
-                        </View>
-                        <Image source={{ uri: getPlayerHeadshotUrl(player.name, player.position, player.team) }} style={styles.rankingsRowHeadshot} />
-                        <View style={styles.rankingsRowInfo}>
-                          <Text style={styles.rankingsRowName} numberOfLines={1}>{player.name}</Text>
-                          <Text style={styles.rankingsRowMeta}>
-                            <Text style={{ color: Colors.positions[player.position], fontWeight: 'bold' }}>{player.position}</Text> · {player.team} · Bye {player.bye}
+                {/* TAB CONTENTS */}
+                <View style={styles.sheetListContent}>
+                  
+                  {/* SUGGESTED TAB */}
+                  {activeTab === 'suggested' && (
+                    <BottomSheetScrollView contentContainerStyle={styles.expandedListScroll} showsVerticalScrollIndicator={false}>
+                      {suggestedPlayers.length === 0 ? (
+                        <View style={styles.emptyContainer}>
+                          <Text style={styles.emptyTitle}>NO SUGGESTED PLAYERS ⚡</Text>
+                          <Text style={styles.emptySubtitle}>
+                            All players matching your current filters have been drafted or position caps have been reached.
                           </Text>
+                          <Pressable 
+                            style={styles.clearFilterBtn}
+                            onPress={() => {
+                              setPosFilter('ALL');
+                              setSearchQuery('');
+                            }}
+                          >
+                            <Text style={styles.clearFilterBtnText}>RESET FILTERS ⚡</Text>
+                          </Pressable>
                         </View>
-                      </View>
-                    ))}
-                    {filteredUserRoster.length === 0 && (
-                      <Text style={styles.emptySearch}>
-                        {userRoster.length === 0 ? "No drafted players. Starters will fill up here." : "No matching players in roster."}
-                      </Text>
-                    )}
-                  </ScrollView>
-                )}
+                      ) : (
+                        suggestedPlayers.map((player, idx) => {
+                          const isStarred = starredIds.includes(player.rank);
+                          const expertPercent = idx === 0 ? '86%' : idx === 1 ? '14%' : '0%';
+                          return (
+                            <SuggestedPlayerRow 
+                              key={player.rank}
+                              player={player}
+                              isStarred={isStarred}
+                              isUserTurn={isUserTurn}
+                              expertPercent={expertPercent}
+                              onToggleStar={() => toggleStar(player.rank)}
+                              onDraft={() => handleDraft(player)}
+                            />
+                          );
+                        })
+                      )}
+                    </BottomSheetScrollView>
+                  )}
+
+                  {/* RANKINGS TAB (WITH TIERS) */}
+                  {activeTab === 'rankings' && (
+                    <BottomSheetScrollView contentContainerStyle={styles.expandedListScroll} showsVerticalScrollIndicator={false}>
+                      {filteredRankings.map((player) => {
+                        const isStarred = starredIds.includes(player.rank);
+                        
+                        // Inject Tier Headings based on Rank
+                        const showTierHeader = player.rank === 1 || player.rank === 6 || player.rank === 16 || player.rank === 31 || player.rank === 51;
+                        let tierLabel = '';
+                        let tierColor = '#ef4444'; // Red
+                        if (player.rank === 1) { tierLabel = 'TIER 1'; tierColor = '#ef4444'; }
+                        else if (player.rank === 6) { tierLabel = 'TIER 2'; tierColor = '#fbbf24'; }
+                        else if (player.rank === 16) { tierLabel = 'TIER 3'; tierColor = '#fb923c'; }
+                        else if (player.rank === 31) { tierLabel = 'TIER 4'; tierColor = '#60a5fa'; }
+                        else if (player.rank === 51) { tierLabel = 'TIER 5'; tierColor = '#4ade80'; }
+
+                        return (
+                          <View key={player.rank}>
+                            {showTierHeader && (
+                              <View style={[styles.tierHeader, { borderBottomColor: tierColor }]}>
+                                <Text style={[styles.tierHeaderText, { color: tierColor }]}>{tierLabel}</Text>
+                              </View>
+                            )}
+                            <PlayerRowItem 
+                              player={player}
+                              isStarred={isStarred}
+                              isUserTurn={isUserTurn}
+                              showStar={true}
+                              showDraft={true}
+                              showRank={true}
+                              onToggleStar={() => toggleStar(player.rank)}
+                              onDraft={() => handleDraft(player)}
+                            />
+                          </View>
+                        );
+                      })}
+                      {filteredRankings.length === 0 && (
+                        <Text style={styles.emptySearch}>No matching players available.</Text>
+                      )}
+                    </BottomSheetScrollView>
+                  )}
+
+                  {/* QUEUE TAB */}
+                  {activeTab === 'queue' && (
+                    <BottomSheetScrollView contentContainerStyle={styles.expandedListScroll} showsVerticalScrollIndicator={false}>
+                      {queuedPlayers.map((player) => (
+                        <PlayerRowItem 
+                          key={player.rank}
+                          player={player}
+                          isStarred={true}
+                          isUserTurn={isUserTurn}
+                          showStar={true}
+                          showDraft={true}
+                          showRank={true}
+                          onToggleStar={() => toggleStar(player.rank)}
+                          onDraft={() => handleDraft(player)}
+                        />
+                      ))}
+                      {queuedPlayers.length === 0 && (
+                        <Text style={styles.emptySearch}>
+                          {players.filter(p => !p.draftedBy && starredIds.includes(p.rank)).length === 0 
+                            ? "Queue is empty. Tap the star icon on players to queue them." 
+                            : "No matching players in queue."}
+                        </Text>
+                      )}
+                    </BottomSheetScrollView>
+                  )}
+
+                  {/* MY TEAM ROSTER TAB */}
+                  {activeTab === 'roster' && (
+                    <BottomSheetScrollView contentContainerStyle={styles.expandedListScroll} showsVerticalScrollIndicator={false}>
+                      {filteredUserRoster.map((player, idx) => (
+                        <PlayerRowItem 
+                          key={player.rank}
+                          player={player}
+                          showRosterIndex={true}
+                          rosterIndex={idx + 1}
+                        />
+                      ))}
+                      {filteredUserRoster.length === 0 && (
+                        <Text style={styles.emptySearch}>
+                          {userRoster.length === 0 ? "No drafted players. Starters will fill up here." : "No matching players in roster."}
+                        </Text>
+                      )}
+                    </BottomSheetScrollView>
+                  )}
+
+                </View>
 
               </View>
 
-            </View>
-          )}
-
-        </Animated.View>
+          </BottomSheetView>
+        </BottomSheet>
 
       </SafeAreaView>
     </View>
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  safeArea: {
-    flex: 1,
-  },
-  topBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.two,
-    backgroundColor: Colors.background,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.coltsNavyLight,
-    minHeight: 52,
-  },
-  exitBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    height: 28,
-    backgroundColor: 'rgba(239, 68, 68, 0.08)',
-    borderColor: 'rgba(239, 68, 68, 0.35)',
-    borderWidth: 1,
-    borderRadius: 14,
-    paddingHorizontal: 10,
-    gap: 4,
-  },
-  exitBtnText: {
-    fontFamily: Fonts.stats,
-    fontSize: 10,
-    color: '#f87171',
-    fontWeight: '800',
-    letterSpacing: 1,
-  },
-  headerDetails: {
-    alignItems: 'center',
-    flex: 1,
-  },
-  headerTitle: {
-    fontFamily: Fonts.headings,
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#ffffff',
-  },
-  headerSub: {
-    fontFamily: Fonts.body,
-    fontSize: 11,
-    color: '#64748b',
-    fontWeight: '500',
-  },
-  modeToggle: {
-    flexDirection: 'row',
-    backgroundColor: Colors.surface,
-    borderRadius: 6,
-    padding: 2,
-    borderWidth: 1,
-    borderColor: Colors.coltsNavyLight,
-  },
-  modeBtn: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 4,
-  },
-  modeBtnActive: {
-    backgroundColor: Colors.surfaceLifted,
-    borderColor: Colors.hofYellow,
-    borderWidth: 1,
-  },
-  modeBtnText: {
-    fontFamily: Fonts.stats,
-    fontSize: 10,
-    color: '#64748b',
-    fontWeight: '700',
-  },
-  modeBtnTextActive: {
-    color: Colors.hofYellow,
-  },
-  boardContainer: {
-    flex: 1,
-  },
-  grid: {
-    flex: 1,
-  },
-  gridHeaderRow: {
-    flexDirection: 'row',
-    height: 38,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.surfaceLifted,
-    backgroundColor: Colors.surface,
-  },
-  gridHeaderCell: {
-    width: 125,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderRightWidth: 1,
-    borderRightColor: Colors.surfaceLifted,
-    paddingHorizontal: 4,
-  },
-  gridHeaderCellUser: {
-    backgroundColor: Colors.surfaceLifted,
-  },
-  gridHeaderCellLabel: {
-    fontFamily: Fonts.stats,
-    fontSize: 9,
-    color: '#64748b',
-    fontWeight: '800',
-  },
-  gridHeaderCellLabelUser: {
-    color: '#34d399',
-  },
-  gridRowsScroll: {
-    paddingBottom: 200,
-  },
-  gridRow: {
-    flexDirection: 'row',
-  },
-  gridCell: {
-    width: 125,
-    height: 72,
-    borderRightWidth: 1,
-    borderRightColor: Colors.surfaceLifted,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.surfaceLifted,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: Colors.background,
-  },
-  gridCellCurrent: {
-    backgroundColor: Colors.surface,
-  },
-  gridCellUser: {
-    backgroundColor: Colors.surfaceLifted,
-  },
-  gridPlayerBlock: {
-    width: '100%',
-    height: '100%',
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 6,
-    borderLeftWidth: 3,
-    position: 'relative',
-  },
-  gridHeadshot: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    marginRight: 4,
-  },
-  gridPlayerDetails: {
-    flex: 1,
-    justifyContent: 'center',
-  },
-  gridPlayerName: {
-    fontFamily: Fonts.body,
-    fontSize: 12,
-    fontWeight: 'bold',
-    color: '#ffffff',
-  },
-  gridPlayerSub: {
-    fontFamily: Fonts.body,
-    fontSize: 9,
-    color: '#64748b',
-  },
-  gridCellPickIndicator: {
-    position: 'absolute',
-    right: 4,
-    bottom: 2,
-    fontFamily: Fonts.stats,
-    fontSize: 8,
-    color: '#64748b',
-    opacity: 0.5,
-  },
-  gridEmptyBlock: {
-    width: '100%',
-    height: '100%',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  onClockPulse: {
-    width: '90%',
-    height: '85%',
-    borderRadius: 6,
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: 3,
-  },
-  onClockPulseUser: {
-    backgroundColor: Colors.surfaceLifted,
-    borderWidth: 1.5,
-    borderColor: Colors.hofYellow,
-  },
-  onClockPulseCpu: {
-    backgroundColor: Colors.surfaceLifted,
-    borderWidth: 1,
-    borderColor: Colors.coltsNavyLight,
-  },
-  onClockText: {
-    fontFamily: Fonts.stats,
-    fontSize: 8,
-    fontWeight: '900',
-    color: Colors.background,
-  },
-  clockIcon: {
-    opacity: 0.9,
-  },
-  gridEmptyPickText: {
-    fontFamily: Fonts.stats,
-    fontSize: 11,
-    color: '#64748b',
-    opacity: 0.3,
-  },
-  rostersList: {
-    padding: Spacing.three,
-    paddingBottom: 240,
-    gap: Spacing.three,
-  },
-  rosterCard: {
-    backgroundColor: Colors.surface,
-    borderRadius: 10,
-    padding: Spacing.three,
-    borderWidth: 1,
-    borderColor: Colors.coltsNavyLight,
-  },
-  rosterCardUser: {
-    borderColor: '#34d399',
-  },
-  rosterCardTitle: {
-    fontFamily: Fonts.stats,
-    fontSize: 11,
-    color: '#64748b',
-    fontWeight: '800',
-    marginBottom: Spacing.two,
-  },
-  rosterCardTitleUser: {
-    color: '#34d399',
-  },
-  rosterCardGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: Spacing.two,
-  },
-  rosterCardPick: {
-    backgroundColor: Colors.background,
-    borderRadius: 6,
-    paddingHorizontal: 8,
-    paddingVertical: 6,
-    width: '48%',
-  },
-  rosterPickNum: {
-    fontFamily: Fonts.stats,
-    fontSize: 9,
-    fontWeight: 'bold',
-  },
-  rosterPickName: {
-    fontFamily: Fonts.body,
-    fontSize: 12,
-    color: '#ffffff',
-    marginTop: 2,
-  },
-  rosterCardEmpty: {
-    fontFamily: Fonts.body,
-    fontSize: 12,
-    color: '#64748b',
-    fontStyle: 'italic',
-  },
-  sheet: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: Colors.surface,
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    borderTopWidth: 1.5,
-    borderTopColor: Colors.coltsNavyLight,
-    zIndex: 100,
-    paddingHorizontal: Spacing.three,
-    // Soft elegant shadow glow overlay
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: -6 },
-    shadowOpacity: 0.45,
-    shadowRadius: 16,
-    elevation: 24,
-  },
-  dragHandleContainer: {
-    width: '100%',
-    height: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  dragHandle: {
-    width: 36,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: '#64748b',
-    opacity: 0.35,
-  },
-  sheetHeader: {
-    marginBottom: Spacing.one,
-  },
-  clockRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  userClockWrapper: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  userClockText: {
-    fontFamily: Fonts.headings,
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#ffffff',
-  },
-  userPulseDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#22c55e',
-  },
-  cpuClockWrapper: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  cpuClockText: {
-    fontFamily: Fonts.headings,
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#94a3b8',
-  },
-  cpuPulseDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#60a5fa',
-  },
-  sheetOverallPick: {
-    fontFamily: Fonts.body,
-    fontSize: 12,
-    color: '#64748b',
-    fontWeight: '500',
-  },
-  starterBar: {
-    marginVertical: Spacing.two,
-  },
-  starterBarScroll: {
-    gap: 8,
-    paddingRight: 16,
-  },
-  starterPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    backgroundColor: Colors.background,
-    borderRadius: 16,
-    paddingHorizontal: 12,
-    height: 32,
-    borderWidth: 1,
-    borderColor: Colors.coltsNavyLight,
-  },
-  starterPillActive: {
-    borderColor: Colors.hofYellow,
-    backgroundColor: Colors.surface,
-  },
-  starterPillLabel: {
-    fontFamily: Fonts.stats,
-    fontSize: 10,
-    color: '#94a3b8',
-    fontWeight: '700',
-  },
-  starterPillCount: {
-    fontFamily: Fonts.stats,
-    fontSize: 10,
-    color: '#ffffff',
-    fontWeight: '800',
-  },
-  dragHandleHitbox: {
-    paddingVertical: 8,
-    paddingHorizontal: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  topRightControls: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  zoomToggleBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: 6,
-    backgroundColor: Colors.surface,
-    borderColor: Colors.coltsNavyLight,
-    borderWidth: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  zoomToggleBtnActive: {
-    borderColor: Colors.hofYellow,
-    backgroundColor: Colors.surfaceLifted,
-  },
-  gridHeaderCellLabelCompact: {
-    fontFamily: Fonts.stats,
-    fontSize: 9,
-    color: '#64748b',
-    fontWeight: '800',
-    textAlign: 'center',
-  },
-  gridPlayerBlockCompact: {
-    width: '100%',
-    height: '100%',
-    justifyContent: 'center',
-    paddingHorizontal: 4,
-    borderLeftWidth: 2,
-  },
-  gridPlayerNameCompact: {
-    fontFamily: Fonts.body,
-    fontSize: 9,
-    fontWeight: 'bold',
-    color: '#ffffff',
-  },
-  gridPlayerSubCompact: {
-    fontFamily: Fonts.body,
-    fontSize: 7,
-    color: '#64748b',
-  },
-  onClockPulseCompact: {
-    width: '90%',
-    height: '85%',
-    borderRadius: 4,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  onClockPulseUserCompact: {
-    backgroundColor: Colors.surfaceLifted,
-    borderWidth: 1,
-    borderColor: Colors.hofYellow,
-  },
-  onClockPulseCpuCompact: {
-    backgroundColor: Colors.surfaceLifted,
-    borderWidth: 1,
-    borderColor: Colors.coltsNavyLight,
-  },
-  onClockTextCompact: {
-    fontFamily: Fonts.stats,
-    fontSize: 7,
-    fontWeight: '900',
-    color: Colors.hofYellow,
-  },
-  gridEmptyPickTextCompact: {
-    fontFamily: Fonts.stats,
-    fontSize: 8,
-    color: '#64748b',
-    opacity: 0.3,
-  },
-  collapsedSuggestionsContainer: {
-    gap: 6,
-    marginTop: Spacing.two,
-    paddingBottom: 10,
-  },
-  posBadge: {
-    borderWidth: 1,
-    borderRadius: 4,
-    paddingHorizontal: 4,
-    paddingVertical: 1,
-  },
-  posBadgeText: {
-    fontFamily: Fonts.stats,
-    fontSize: 8,
-    fontWeight: '900',
-  },
-  expandedWrapper: {
-    flex: 1,
-  },
-  tabsRow: {
-    flexDirection: 'row',
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.surfaceLifted,
-    paddingBottom: Spacing.one,
-  },
-  tabBtn: {
-    flex: 1,
-    alignItems: 'center',
-    paddingVertical: 8,
-  },
-  tabBtnActive: {
-    borderBottomWidth: 3,
-    borderBottomColor: Colors.hofYellow,
-  },
-  tabBtnText: {
-    fontFamily: Fonts.headings,
-    fontSize: 15,
-    color: '#64748b',
-    fontWeight: 'bold',
-  },
-  tabBtnTextActive: {
-    color: '#ffffff',
-  },
-  searchBlock: {
-    paddingVertical: Spacing.two,
-    gap: 8,
-  },
-  sheetSearchInput: {
-    backgroundColor: Colors.background,
-    borderWidth: 1,
-    borderColor: Colors.coltsNavyLight,
-    borderRadius: 8,
-    paddingHorizontal: Spacing.three,
-    height: 38,
-    fontFamily: Fonts.body,
-    fontSize: 13,
-    color: '#ffffff',
-  },
-  posChipsScroll: {
-    gap: 6,
-  },
-  posChip: {
-    paddingHorizontal: 12,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: Colors.background,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: Colors.coltsNavyLight,
-  },
-  posChipActive: {
-    backgroundColor: Colors.surfaceLifted,
-    borderColor: Colors.hofYellow,
-    borderWidth: 1,
-  },
-  posChipText: {
-    fontFamily: Fonts.stats,
-    fontSize: 10,
-    color: '#64748b',
-    fontWeight: '700',
-  },
-  posChipTextActive: {
-    color: Colors.hofYellow,
-  },
-  sheetListContent: {
-    flex: 1,
-  },
-  expandedListScroll: {
-    paddingBottom: 80,
-    gap: 12,
-    paddingTop: Spacing.two,
-  },
-  suggestedItem: {
-    backgroundColor: Colors.surface,
-    borderRadius: 8,
-    paddingVertical: 6,
-    paddingHorizontal: Spacing.two,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    borderWidth: 1,
-    borderColor: Colors.coltsNavyLight,
-    height: 52,
-  },
-  suggestedHeadshot: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-  },
-  suggestedInfo: {
-    flex: 1,
-    justifyContent: 'center',
-  },
-  suggestedHeaderRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  suggestedName: {
-    fontFamily: Fonts.body,
-    fontSize: 13,
-    fontWeight: 'bold',
-    color: '#ffffff',
-  },
-  suggestedSub: {
-    fontFamily: Fonts.body,
-    fontSize: 10,
-    color: '#94a3b8',
-  },
-  suggestedActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  expertCol: {
-    alignItems: 'center',
-    marginRight: 2,
-  },
-  expertVal: {
-    fontFamily: Fonts.stats,
-    fontSize: 11,
-    color: '#34d399',
-    fontWeight: 'bold',
-  },
-  expertLbl: {
-    fontFamily: Fonts.body,
-    fontSize: 8,
-    color: '#64748b',
-  },
-  starBtn: {
-    width: 28,
-    height: 28,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  draftBtn: {
-    backgroundColor: Colors.surfaceLifted,
-    borderColor: Colors.hofYellow,
-    borderWidth: 1,
-    borderRadius: 6,
-    paddingHorizontal: 10,
-    height: 28,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  draftBtnDisabled: {
-    backgroundColor: Colors.background,
-    opacity: 0.3,
-  },
-  draftBtnText: {
-    fontFamily: Fonts.headings,
-    fontSize: 11,
-    fontWeight: 'bold',
-    color: Colors.hofYellow,
-  },
-  tierHeader: {
-    borderBottomWidth: 1.5,
-    paddingBottom: 4,
-    marginTop: Spacing.two,
-    marginBottom: Spacing.one,
-  },
-  tierHeaderText: {
-    fontFamily: Fonts.stats,
-    fontSize: 11,
-    fontWeight: '800',
-    letterSpacing: 2,
-  },
-  rankingsRowItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: Colors.surface,
-    borderColor: Colors.coltsNavyLight,
-    borderWidth: 1,
-    borderRadius: 8,
-    paddingVertical: 6,
-    paddingHorizontal: Spacing.two,
-    gap: 8,
-    height: 52,
-  },
-  rankingsRowRank: {
-    fontFamily: Fonts.stats,
-    fontSize: 12,
-    color: '#94a3b8',
-    width: 20,
-    textAlign: 'center',
-    fontWeight: 'bold',
-  },
-  rankingsRowHeadshot: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-  },
-  rankingsRowInfo: {
-    flex: 1,
-    justifyContent: 'center',
-  },
-  rankingsRowName: {
-    fontFamily: Fonts.body,
-    fontSize: 13,
-    fontWeight: 'bold',
-    color: '#ffffff',
-  },
-  rankingsRowMeta: {
-    fontFamily: Fonts.body,
-    fontSize: 10,
-    color: '#64748b',
-  },
-  starBtnSmall: {
-    width: 28,
-    height: 28,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  draftBtnSmall: {
-    backgroundColor: Colors.surfaceLifted,
-    borderColor: Colors.hofYellow,
-    borderWidth: 1,
-    borderRadius: 6,
-    paddingHorizontal: 10,
-    height: 28,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  draftBtnTextSmall: {
-    fontFamily: Fonts.headings,
-    fontSize: 11,
-    fontWeight: 'bold',
-    color: Colors.hofYellow,
-  },
-  rosterCardIndex: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: Colors.background,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: Colors.coltsNavyLight,
-  },
-  rosterCardIndexText: {
-    fontFamily: Fonts.stats,
-    fontSize: 10,
-    color: '#94a3b8',
-    fontWeight: 'bold',
-  },
-  emptySearch: {
-    fontFamily: Fonts.body,
-    fontSize: 13,
-    color: '#64748b',
-    textAlign: 'center',
-    paddingVertical: Spacing.five,
-  },
-});
+function createStyles(Colors: typeof LightColors) {
+  return StyleSheet.create({
+    bottomSheetViewContent: {
+      flex: 1,
+      ...(Platform.OS === 'web' ? {
+        minHeight: SCREEN_HEIGHT * 0.85,
+        maxHeight: SCREEN_HEIGHT * 0.9,
+      } : {}),
+    },
+    container: {
+      flex: 1,
+    },
+    safeArea: {
+      flex: 1,
+    },
+    topBar: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingHorizontal: Spacing.three,
+      paddingVertical: Spacing.two,
+      backgroundColor: Colors.background,
+      borderBottomWidth: 1,
+      borderBottomColor: Colors.coltsNavyLight,
+      minHeight: 52,
+    },
+    exitBtn: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      height: 28,
+      backgroundColor: 'rgba(239, 68, 68, 0.08)',
+      borderColor: 'rgba(239, 68, 68, 0.35)',
+      borderWidth: 1,
+      borderRadius: 14,
+      paddingHorizontal: 10,
+      gap: 4,
+    },
+    exitBtnText: {
+      fontFamily: Fonts.stats,
+      fontSize: 10,
+      color: '#f87171',
+      fontWeight: '800',
+      letterSpacing: 1,
+    },
+    headerDetails: {
+      alignItems: 'center',
+      flex: 1,
+    },
+    headerTitle: {
+      fontFamily: Fonts.headings,
+      fontSize: 16,
+      fontWeight: 'bold',
+      color: Colors.primaryAccent,
+    },
+    headerSub: {
+      fontFamily: Fonts.body,
+      fontSize: 11,
+      color: Colors.secondaryAccent,
+      fontWeight: '500',
+    },
+    modeToggle: {
+      flexDirection: 'row',
+      backgroundColor: Colors.surface,
+      borderRadius: 6,
+      padding: 2,
+      borderWidth: 1,
+      borderColor: Colors.coltsNavyLight,
+    },
+    modeBtn: {
+      paddingHorizontal: 8,
+      paddingVertical: 4,
+      borderRadius: 4,
+    },
+    modeBtnActive: {
+      backgroundColor: Colors.surfaceLifted,
+      borderColor: Colors.hofYellow,
+      borderWidth: 1,
+    },
+    modeBtnText: {
+      fontFamily: Fonts.stats,
+      fontSize: 10,
+      color: Colors.secondaryAccent,
+      fontWeight: '700',
+    },
+    modeBtnTextActive: {
+      color: Colors.hofYellow,
+    },
+    boardContainer: {
+      flex: 1,
+    },
+    grid: {
+      flex: 1,
+    },
+    gridHeaderRow: {
+      flexDirection: 'row',
+      height: 38,
+      borderBottomWidth: 1,
+      borderBottomColor: Colors.surfaceLifted,
+      backgroundColor: Colors.surface,
+    },
+    gridHeaderCell: {
+      width: 125,
+      justifyContent: 'center',
+      alignItems: 'center',
+      borderRightWidth: 1,
+      borderRightColor: Colors.surfaceLifted,
+      paddingHorizontal: 4,
+    },
+    gridHeaderCellUser: {
+      backgroundColor: Colors.surfaceLifted,
+    },
+    gridHeaderCellLabel: {
+      fontFamily: Fonts.stats,
+      fontSize: 9,
+      color: Colors.secondaryAccent,
+      fontWeight: '800',
+    },
+    gridHeaderCellLabelUser: {
+      color: '#34d399',
+    },
+    gridRowsScroll: {
+      paddingBottom: 200,
+    },
+    gridRow: {
+      flexDirection: 'row',
+    },
+    gridCell: {
+      width: 125,
+      height: 72,
+      borderRightWidth: 1,
+      borderRightColor: Colors.surfaceLifted,
+      borderBottomWidth: 1,
+      borderBottomColor: Colors.surfaceLifted,
+      justifyContent: 'center',
+      alignItems: 'center',
+      backgroundColor: Colors.background,
+    },
+    gridCellCurrent: {
+      backgroundColor: Colors.surface,
+    },
+    gridCellUser: {
+      backgroundColor: Colors.surfaceLifted,
+    },
+    gridPlayerBlock: {
+      width: '100%',
+      height: '100%',
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: 6,
+      borderLeftWidth: 3,
+      position: 'relative',
+    },
+    gridHeadshot: {
+      width: 32,
+      height: 32,
+      borderRadius: 16,
+      marginRight: 4,
+    },
+    gridPlayerDetails: {
+      flex: 1,
+      justifyContent: 'center',
+    },
+    gridPlayerName: {
+      fontFamily: Fonts.body,
+      fontSize: 12,
+      fontWeight: 'bold',
+      color: Colors.primaryAccent,
+    },
+    gridPlayerSub: {
+      fontFamily: Fonts.body,
+      fontSize: 9,
+      color: Colors.secondaryAccent,
+    },
+    gridCellPickIndicator: {
+      position: 'absolute',
+      right: 4,
+      bottom: 2,
+      fontFamily: Fonts.stats,
+      fontSize: 8,
+      color: Colors.secondaryAccent,
+      opacity: 0.5,
+    },
+    gridEmptyBlock: {
+      width: '100%',
+      height: '100%',
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    onClockPulse: {
+      width: '90%',
+      height: '85%',
+      borderRadius: 6,
+      justifyContent: 'center',
+      alignItems: 'center',
+      gap: 3,
+    },
+    onClockPulseUser: {
+      backgroundColor: Colors.surfaceLifted,
+      borderWidth: 1.5,
+      borderColor: Colors.hofYellow,
+    },
+    onClockPulseCpu: {
+      backgroundColor: Colors.surfaceLifted,
+      borderWidth: 1,
+      borderColor: Colors.coltsNavyLight,
+    },
+    onClockText: {
+      fontFamily: Fonts.stats,
+      fontSize: 8,
+      fontWeight: '900',
+      color: Colors.primaryAccent,
+    },
+    clockIcon: {
+      opacity: 0.9,
+    },
+    gridEmptyPickText: {
+      fontFamily: Fonts.stats,
+      fontSize: 11,
+      color: Colors.secondaryAccent,
+      opacity: 0.3,
+    },
+    rostersList: {
+      padding: Spacing.three,
+      paddingBottom: 240,
+      gap: Spacing.three,
+    },
+    sheetHeaderBanner: {
+      backgroundColor: '#275916', // Deep Field Green +8% luminance
+      borderTopLeftRadius: 24,
+      borderTopRightRadius: 24,
+      borderBottomWidth: 1,
+      borderBottomColor: '#F4F5F7', // Chalk White bottom edge
+      paddingVertical: 14,
+      paddingHorizontal: 16,
+      overflow: 'hidden',
+    },
+    clockRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+    },
+    userClockWrapper: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+    },
+    userClockText: {
+      fontFamily: Fonts.headings,
+      fontSize: 15,
+      fontWeight: 'bold',
+      color: '#F4F5F7', // Chalk White text
+      letterSpacing: 0.5,
+    },
+    yellowPulseDot: {
+      width: 8,
+      height: 8,
+      borderRadius: 4,
+      backgroundColor: '#FFC107', // pulsing Penalty-Yellow dot
+    },
+    timerRightContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+    },
+    timerText: {
+      fontFamily: Fonts.stats,
+      fontSize: 18,
+      fontWeight: 'bold',
+    },
+    sheetOverallPick: {
+      fontFamily: Fonts.body,
+      fontSize: 12,
+      color: '#9EA7B0', // Chrome Silver pick count
+      fontWeight: '600',
+    },
+    topRightControls: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+    },
+    zoomToggleBtn: {
+      width: 32,
+      height: 32,
+      borderRadius: 6,
+      backgroundColor: Colors.surface,
+      borderColor: Colors.coltsNavyLight,
+      borderWidth: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    zoomToggleBtnActive: {
+      borderColor: Colors.hofYellow,
+      backgroundColor: Colors.surfaceLifted,
+    },
+    gridHeaderCellLabelCompact: {
+      fontFamily: Fonts.stats,
+      fontSize: 9,
+      color: Colors.secondaryAccent,
+      fontWeight: '800',
+      textAlign: 'center',
+    },
+    gridPlayerBlockCompact: {
+      width: '100%',
+      height: '100%',
+      justifyContent: 'center',
+      paddingHorizontal: 4,
+      borderLeftWidth: 2,
+    },
+    gridPlayerNameCompact: {
+      fontFamily: Fonts.body,
+      fontSize: 9,
+      fontWeight: 'bold',
+      color: Colors.primaryAccent,
+    },
+    gridPlayerSubCompact: {
+      fontFamily: Fonts.body,
+      fontSize: 7,
+      color: Colors.secondaryAccent,
+    },
+    onClockPulseCompact: {
+      width: '90%',
+      height: '85%',
+      borderRadius: 4,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    onClockPulseUserCompact: {
+      backgroundColor: Colors.surfaceLifted,
+      borderWidth: 1,
+      borderColor: Colors.hofYellow,
+    },
+    onClockPulseCpuCompact: {
+      backgroundColor: Colors.surfaceLifted,
+      borderWidth: 1,
+      borderColor: Colors.coltsNavyLight,
+    },
+    onClockTextCompact: {
+      fontFamily: Fonts.stats,
+      fontSize: 7,
+      fontWeight: '900',
+      color: Colors.primaryAccent,
+    },
+    gridEmptyPickTextCompact: {
+      fontFamily: Fonts.stats,
+      fontSize: 8,
+      color: Colors.secondaryAccent,
+      opacity: 0.3,
+    },
+    posBadge: {
+      borderWidth: 1,
+      borderRadius: 4,
+      paddingHorizontal: 4,
+      paddingVertical: 1,
+    },
+    posBadgeText: {
+      fontFamily: Fonts.stats,
+      fontSize: 8,
+      fontWeight: '900',
+    },
+    expandedWrapper: {
+      flex: 1,
+      paddingHorizontal: Spacing.three,
+      ...(Platform.OS === 'web' ? {
+        minHeight: SCREEN_HEIGHT * 0.7,
+        maxHeight: SCREEN_HEIGHT * 0.8,
+      } : {}),
+    },
+    tabsRow: {
+      flexDirection: 'row',
+      borderBottomWidth: 1,
+      borderBottomColor: Colors.surfaceLifted,
+      paddingBottom: Spacing.one,
+    },
+    tabBtn: {
+      flex: 1,
+      alignItems: 'center',
+      paddingVertical: 8,
+    },
+    tabBtnActive: {
+      borderBottomWidth: 3,
+      borderBottomColor: Colors.hofYellow,
+    },
+    tabBtnText: {
+      fontFamily: Fonts.headings,
+      fontSize: 15,
+      color: Colors.secondaryAccent,
+      fontWeight: 'bold',
+    },
+    tabBtnTextActive: {
+      color: Colors.primaryAccent,
+    },
+    searchBlock: {
+      paddingVertical: Spacing.two,
+      gap: 8,
+    },
+    sheetSearchInput: {
+      backgroundColor: Colors.background,
+      borderWidth: 1,
+      borderColor: Colors.coltsNavyLight,
+      borderRadius: 8,
+      paddingHorizontal: Spacing.three,
+      height: 38,
+      fontFamily: Fonts.body,
+      fontSize: 13,
+      color: Colors.primaryAccent,
+    },
+    posChipsScroll: {
+      gap: 6,
+    },
+    posChip: {
+      paddingHorizontal: 12,
+      height: 28,
+      borderRadius: 14,
+      backgroundColor: Colors.background,
+      justifyContent: 'center',
+      alignItems: 'center',
+      borderWidth: 1,
+      borderColor: Colors.coltsNavyLight,
+    },
+    posChipActive: {
+      backgroundColor: Colors.surfaceLifted,
+      borderColor: Colors.hofYellow,
+      borderWidth: 1,
+    },
+    posChipText: {
+      fontFamily: Fonts.stats,
+      fontSize: 10,
+      color: Colors.secondaryAccent,
+      fontWeight: '700',
+    },
+    posChipTextActive: {
+      color: Colors.hofYellow,
+    },
+    sheetListContent: {
+      flex: 1,
+      ...(Platform.OS === 'web' ? {
+        minHeight: SCREEN_HEIGHT * 0.5,
+        maxHeight: SCREEN_HEIGHT * 0.6,
+      } : {}),
+    },
+    expandedListScroll: {
+      paddingBottom: 80,
+      gap: 12,
+      paddingTop: Spacing.two,
+    },
+    tierHeader: {
+      borderBottomWidth: 1.5,
+      paddingBottom: 4,
+      marginTop: Spacing.two,
+      marginBottom: Spacing.one,
+    },
+    tierHeaderText: {
+      fontFamily: Fonts.stats,
+      fontSize: 11,
+      fontWeight: '800',
+      letterSpacing: 2,
+    },
+    emptySearch: {
+      fontFamily: Fonts.body,
+      fontSize: 13,
+      color: Colors.secondaryAccent,
+      textAlign: 'center',
+      paddingVertical: Spacing.five,
+    },
+    emptyContainer: {
+      paddingHorizontal: Spacing.four,
+      paddingVertical: Spacing.six,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: Colors.surface,
+      borderColor: Colors.coltsNavyLight,
+      borderWidth: 1,
+      borderRadius: 12,
+      marginTop: Spacing.three,
+      marginHorizontal: Spacing.three,
+    },
+    emptyTitle: {
+      fontFamily: Fonts.headings,
+      fontSize: 16,
+      fontWeight: 'bold',
+      color: '#bea98e', // Champagne Bronze highlight
+      marginBottom: Spacing.two,
+      textAlign: 'center',
+      letterSpacing: 1,
+    },
+    emptySubtitle: {
+      fontFamily: Fonts.body,
+      fontSize: 12,
+      color: Colors.secondaryAccent,
+      textAlign: 'center',
+      marginBottom: Spacing.four,
+      lineHeight: 18,
+    },
+    clearFilterBtn: {
+      backgroundColor: '#bea98e', // Champagne Bronze primary CTA background
+      paddingHorizontal: Spacing.four,
+      paddingVertical: Spacing.two,
+      borderRadius: 20,
+      borderWidth: 1.5,
+      borderColor: '#bea98e',
+    },
+    clearFilterBtnText: {
+      fontFamily: Fonts.headings,
+      fontSize: 12,
+      color: '#000000', // Mandatory solid black overlay text for AAA WCAG compliance
+      fontWeight: '800',
+      textAlign: 'center',
+      letterSpacing: 0.8,
+    },
+    dragHandleContainer: {
+      width: '100%',
+      height: 20,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    dragHandle: {
+      width: 36,
+      height: 4,
+      borderRadius: 2,
+      backgroundColor: '#64748b',
+      opacity: 0.35,
+    },
+  });
+}
+
+const lightStyles = createStyles(LightColors);
+const darkStyles = createStyles(DarkColors as any);
+const styles = new Proxy({}, {
+  get(target, prop) {
+    const theme = useThemeStore.getState().theme;
+    return theme === 'dark' ? darkStyles[prop as keyof typeof darkStyles] : lightStyles[prop as keyof typeof lightStyles];
+  }
+}) as ReturnType<typeof createStyles>;
+
+export default function SafeActiveDraftScreen() {
+  const router = useRouter();
+  const resetDraft = useDraftStore((state) => state.resetDraft);
+  const handleReset = () => {
+    resetDraft();
+    router.replace('/wizard/setup');
+  };
+
+  return (
+    <ErrorBoundary onReset={handleReset}>
+      <ActiveDraftScreen />
+    </ErrorBoundary>
+  );
+}
