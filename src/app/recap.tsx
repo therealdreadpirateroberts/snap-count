@@ -235,29 +235,46 @@ function RecapContent() {
               {draftRecaps.map((recap, index) => (
                 <View key={recap.id} style={styles.cardContainer}>
                   
-                  {/* Top half: Top 3 Picks (centered with round indicators underneath) */}
+                  {/* Top half: Top 3 Picks in 1970s Baseball Card style */}
                   <View style={styles.cardTopHalf}>
-                    <View style={styles.picksContainer}>
-                      {recap.topPicks.map((pick, pIdx) => (
-                        <View key={pIdx} style={styles.playerUnit}>
-                          <Image 
-                            source={{ uri: pick.image }} 
-                            style={styles.playerImageCompact} 
-                          />
-                          <Text style={styles.roundText}>{pick.round}</Text>
-                        </View>
-                      ))}
+                    {/* Grade in top right corner in white text */}
+                    <View style={styles.gradeContainer}>
+                      <Text style={styles.gradeText}>{recap.grade}</Text>
                     </View>
 
-                    {/* Header Title inside card */}
-                    <Text style={styles.cardHeaderTitle}>Draft Recap</Text>
-                    <Text style={styles.cardHeaderSub}>First Pick: {recap.topPicks[0].name} ({recap.topPicks[0].pick})</Text>
+                    <View style={styles.baseballContainer}>
+                      {recap.topPicks.map((pick, pIdx) => {
+                        const nameParts = pick.name.split(' ');
+                        const firstName = nameParts[0] || '';
+                        const lastName = nameParts.slice(1).join(' ') || '';
+
+                        return (
+                          <View key={pIdx} style={styles.baseballCard}>
+                            <View style={styles.baseballCardImageContainer}>
+                              <Image 
+                                source={{ uri: pick.image }} 
+                                style={styles.baseballCardImage} 
+                              />
+                            </View>
+                            <View style={styles.baseballCardTextContainer}>
+                              <Text style={styles.baseballCardFirstName} numberOfLines={1}>
+                                {firstName.toUpperCase()}
+                              </Text>
+                              <Text style={styles.baseballCardLastName} numberOfLines={1}>
+                                {lastName.toUpperCase()}
+                              </Text>
+                              <Text style={styles.baseballCardTeamPos} numberOfLines={1}>
+                                {`${pick.team} • ${pick.position}`}
+                              </Text>
+                            </View>
+                          </View>
+                        );
+                      })}
+                    </View>
                   </View>
 
-                  {/* Bottom half: Oswald Score, Gold badge (Pillar 3 / Containment depth, no barcode) */}
+                  {/* Bottom half: Gold badge & Stats (no barcode) */}
                   <View style={styles.cardBottomHalf}>
-                    <Text style={styles.scoreText}>{recap.grade}</Text>
-                    
                     <View style={styles.goldPill}>
                       <Text style={styles.goldPillText}>Draft Efficiency: {recap.efficiency}</Text>
                     </View>
@@ -431,64 +448,101 @@ function createStyles(Colors: typeof import('@/constants/theme').LightColors, is
       overflow: 'hidden',
     },
     cardTopHalf: {
-      flex: 1,
+      flex: 1.25,
       backgroundColor: Colors.coltsNavy,
-      alignItems: 'center',
-      justifyContent: 'center',
-      padding: Spacing.two,
+      paddingTop: 34,
+      paddingHorizontal: 8,
+      paddingBottom: 10,
       position: 'relative',
-    },
-    picksContainer: {
-      flexDirection: 'row',
-      justifyContent: 'center',
-      alignItems: 'center',
-      gap: 16,
-      marginBottom: Spacing.two,
-    },
-    playerUnit: {
-      alignItems: 'center',
       justifyContent: 'center',
     },
-    playerImageCompact: {
-      width: 44,
-      height: 44,
-      borderRadius: 22,
-      borderWidth: 2,
-      borderColor: '#FFFFFF',
-      backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    gradeContainer: {
+      position: 'absolute',
+      top: 10,
+      right: 12,
+      zIndex: 10,
     },
-    roundText: {
-      fontFamily: Fonts.stats,
-      fontSize: 10,
-      fontWeight: 'bold',
-      color: Colors.hofYellow,
-      marginTop: 4,
-    },
-    cardHeaderTitle: {
+    gradeText: {
       fontFamily: Fonts.headings,
-      fontSize: 15,
+      fontSize: 20,
+      fontWeight: '900',
+      color: '#FFFFFF',
+      textShadowColor: 'rgba(0, 0, 0, 0.4)',
+      textShadowOffset: { width: 0, height: 1 },
+      textShadowRadius: 3,
+    },
+    baseballContainer: {
+      flexDirection: 'row',
+      width: '100%',
+      justifyContent: 'space-between',
+      gap: 6,
+    },
+    baseballCard: {
+      flex: 1,
+      backgroundColor: isDark ? 'rgba(0, 0, 0, 0.25)' : 'rgba(255, 255, 255, 0.08)',
+      borderRadius: 10,
+      borderWidth: 1.5,
+      borderColor: '#FFFFFF',
+      overflow: 'hidden',
+      height: 140,
+      shadowColor: '#000000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.15,
+      shadowRadius: 3,
+      elevation: 2,
+    },
+    baseballCardImageContainer: {
+      width: '100%',
+      height: 72,
+      backgroundColor: isDark ? 'rgba(255, 255, 255, 0.04)' : 'rgba(255, 255, 255, 0.12)',
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderBottomWidth: 1,
+      borderColor: 'rgba(255, 255, 255, 0.1)',
+    },
+    baseballCardImage: {
+      width: '90%',
+      height: '90%',
+      resizeMode: 'contain',
+    },
+    baseballCardTextContainer: {
+      paddingVertical: Spacing.one,
+      paddingHorizontal: 2,
+      alignItems: 'center',
+      justifyContent: 'center',
+      flex: 1,
+    },
+    baseballCardFirstName: {
+      fontFamily: Fonts.headings,
+      fontSize: 8,
       fontWeight: 'bold',
       color: '#FFFFFF',
-      letterSpacing: 0.5,
+      textAlign: 'center',
+      letterSpacing: 0.3,
     },
-    cardHeaderSub: {
+    baseballCardLastName: {
+      fontFamily: Fonts.headings,
+      fontSize: 9.5,
+      fontWeight: '900',
+      color: '#bea98e', // Champagne Bronze
+      textAlign: 'center',
+      letterSpacing: 0.3,
+      marginTop: 1,
+    },
+    baseballCardTeamPos: {
       fontFamily: Fonts.body,
-      fontSize: 10,
-      color: Colors.hofYellow,
-      marginTop: Spacing.half,
+      fontSize: 7.5,
+      color: 'rgba(255, 255, 255, 0.65)',
+      textAlign: 'center',
+      marginTop: 2,
+      fontWeight: '600',
+      letterSpacing: 0.2,
     },
     cardBottomHalf: {
-      flex: 1.1,
+      flex: 1.0,
       alignItems: 'center',
       justifyContent: 'space-between',
       padding: Spacing.two,
-    },
-    scoreText: {
-      fontFamily: Fonts.headings,
-      fontSize: 28,
-      fontWeight: '900',
-      color: Colors.primaryAccent,
-      letterSpacing: 1,
     },
     goldPill: {
       borderWidth: 1,
