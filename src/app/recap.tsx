@@ -163,7 +163,7 @@ function RecapContent() {
               scrollEventThrottle={16}
               style={styles.swiperScrollView}
               contentContainerStyle={styles.swiperContent}
-              snapToInterval={336 + 24} // card width + margin
+              snapToInterval={280 + 24} // card width + margin
               decelerationRate="fast"
               snapToAlignment="center"
             >
@@ -173,7 +173,7 @@ function RecapContent() {
                   {/* Top half: Player EPSN headshot with gold stamp outline (Pillar 2 / Stamp Pattern) */}
                   <View style={styles.cardTopHalf}>
                     <View style={styles.goldLaurelContainer}>
-                      <Svg width={110} height={110} viewBox="0 0 100 100" style={styles.svgLaurel}>
+                      <Svg width={80} height={80} viewBox="0 0 100 100" style={styles.svgLaurel}>
                         <Circle 
                           cx="50" 
                           cy="50" 
@@ -380,7 +380,7 @@ function createStyles(Colors: typeof import('@/constants/theme').LightColors, is
       flex: 1,
     },
     swiperScrollView: {
-      height: 480,
+      height: 390,
     },
     swiperContent: {
       paddingHorizontal: 24,
@@ -388,10 +388,10 @@ function createStyles(Colors: typeof import('@/constants/theme').LightColors, is
       gap: 24,
     },
     cardContainer: {
-      width: 326,
-      height: 440,
+      width: 280,
+      height: 360,
       backgroundColor: Colors.surface,
-      borderRadius: 24,
+      borderRadius: 20,
       borderWidth: 1,
       borderColor: Colors.coltsNavyLight,
       shadowColor: Colors.shadows.shadowColor,
@@ -402,20 +402,20 @@ function createStyles(Colors: typeof import('@/constants/theme').LightColors, is
       overflow: 'hidden',
     },
     cardTopHalf: {
-      flex: 1.1,
+      flex: 1,
       backgroundColor: Colors.coltsNavy,
       alignItems: 'center',
       justifyContent: 'center',
-      padding: Spacing.three,
+      padding: Spacing.two,
       position: 'relative',
     },
     goldLaurelContainer: {
       position: 'relative',
-      width: 110,
-      height: 110,
+      width: 80,
+      height: 80,
       alignItems: 'center',
       justifyContent: 'center',
-      marginBottom: Spacing.two,
+      marginBottom: Spacing.one,
     },
     svgLaurel: {
       position: 'absolute',
@@ -425,35 +425,35 @@ function createStyles(Colors: typeof import('@/constants/theme').LightColors, is
       bottom: 0,
     },
     playerImage: {
-      width: 64,
-      height: 64,
-      borderRadius: 32,
+      width: 48,
+      height: 48,
+      borderRadius: 24,
       backgroundColor: 'rgba(255, 255, 255, 0.1)',
       borderWidth: 1,
       borderColor: Colors.hofYellow,
     },
     cardHeaderTitle: {
       fontFamily: Fonts.headings,
-      fontSize: 18,
+      fontSize: 15,
       fontWeight: 'bold',
       color: '#FFFFFF',
       letterSpacing: 0.5,
     },
     cardHeaderSub: {
       fontFamily: Fonts.body,
-      fontSize: 12,
+      fontSize: 10,
       color: Colors.hofYellow,
       marginTop: Spacing.half,
     },
     cardBottomHalf: {
-      flex: 1.3,
+      flex: 1.1,
       alignItems: 'center',
       justifyContent: 'space-between',
-      padding: Spacing.three,
+      padding: Spacing.two,
     },
     scoreText: {
       fontFamily: Fonts.headings,
-      fontSize: 38,
+      fontSize: 28,
       fontWeight: '900',
       color: Colors.primaryAccent,
       letterSpacing: 1,
@@ -461,36 +461,36 @@ function createStyles(Colors: typeof import('@/constants/theme').LightColors, is
     goldPill: {
       borderWidth: 1,
       borderColor: Colors.hofYellow,
-      borderRadius: 12,
-      paddingHorizontal: Spacing.two,
+      borderRadius: 10,
+      paddingHorizontal: Spacing.one,
       paddingVertical: Spacing.half,
       backgroundColor: isDark ? 'rgba(255, 205, 0, 0.08)' : '#FFFDF0',
     },
     goldPillText: {
       fontFamily: Fonts.stats,
-      fontSize: 10,
+      fontSize: 9,
       fontWeight: '700',
       color: isDark ? Colors.hofYellow : '#8A6D00',
     },
     barcodeOuter: {
       alignItems: 'center',
       justifyContent: 'center',
-      marginVertical: Spacing.one,
+      marginVertical: Spacing.half,
     },
     barcodeContainer: {
       flexDirection: 'row',
-      height: 24,
+      height: 16,
       alignItems: 'center',
     },
     barcodeLine: {
-      height: 24,
+      height: 16,
       backgroundColor: Colors.primaryAccent,
     },
     barcodeText: {
       fontFamily: Fonts.stats,
-      fontSize: 9,
+      fontSize: 8,
       color: Colors.secondaryAccent,
-      marginTop: Spacing.one,
+      marginTop: Spacing.half,
       letterSpacing: 1,
     },
     recapStatsContainer: {
@@ -498,7 +498,7 @@ function createStyles(Colors: typeof import('@/constants/theme').LightColors, is
       alignItems: 'center',
       justifyContent: 'space-around',
       width: '100%',
-      paddingVertical: Spacing.one,
+      paddingVertical: Spacing.half,
       borderTopWidth: 1,
       borderBottomWidth: 1,
       borderColor: Colors.coltsNavyLight,
@@ -509,18 +509,18 @@ function createStyles(Colors: typeof import('@/constants/theme').LightColors, is
     },
     statVal: {
       fontFamily: Fonts.stats,
-      fontSize: 13,
+      fontSize: 11,
       fontWeight: 'bold',
       color: Colors.primaryAccent,
     },
     statLbl: {
       fontFamily: Fonts.body,
-      fontSize: 9,
+      fontSize: 8,
       color: Colors.secondaryAccent,
       marginTop: Spacing.half,
     },
     statDivider: {
-      height: 20,
+      height: 16,
       width: 1,
       backgroundColor: Colors.coltsNavyLight,
     },
@@ -529,8 +529,8 @@ function createStyles(Colors: typeof import('@/constants/theme').LightColors, is
       alignItems: 'center',
       justifyContent: 'space-between',
       width: '100%',
-      gap: 12,
-      marginTop: Spacing.one,
+      gap: 8,
+      marginTop: Spacing.half,
     },
     cardActionBtn: {
       flex: 1,
@@ -540,16 +540,16 @@ function createStyles(Colors: typeof import('@/constants/theme').LightColors, is
       backgroundColor: Colors.surfaceLifted,
       borderWidth: 1,
       borderColor: Colors.coltsNavyLight,
-      paddingVertical: Spacing.two,
-      borderRadius: 16,
-      gap: 6,
+      paddingVertical: 6,
+      borderRadius: 12,
+      gap: 4,
     },
     cardActionBtnPressed: {
       opacity: 0.65,
     },
     cardActionBtnText: {
       fontFamily: Fonts.body,
-      fontSize: 11,
+      fontSize: 10,
       fontWeight: 'bold',
       color: Colors.primaryAccent,
     },
@@ -558,7 +558,7 @@ function createStyles(Colors: typeof import('@/constants/theme').LightColors, is
       alignItems: 'center',
       justifyContent: 'center',
       gap: 8,
-      marginVertical: Spacing.three,
+      marginVertical: Spacing.two,
     },
     indicatorDot: {
       height: 8,
