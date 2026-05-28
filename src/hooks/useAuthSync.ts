@@ -12,7 +12,7 @@ export const useAuthSync = () => {
         const currentUserId = state.user?.id || null;
 
         if (currentUserId !== lastUserId) {
-          log('AuthSync', `🔑 [Auth Sync] Active user transitioned: ${lastUserId} -> ${currentUserId}`);
+          log('AuthSync', `[Auth Sync] Active user transitioned: ${lastUserId} -> ${currentUserId}`);
           lastUserId = currentUserId;
           useHistoryStore.getState().rehydrateUserData();
         }

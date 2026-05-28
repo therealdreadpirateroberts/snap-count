@@ -1,4 +1,7 @@
-﻿export interface Player {
+import { PLAYER_REGISTRY, RegistryPlayer } from './playerRegistry';
+import { CardVariety } from '@/types/tradingCard';
+
+export interface Player {
   rank: number; // Consensus rank based on selected format
   espnId: number | null; // Bulletproof CDN ID
   name: string;
@@ -10,6 +13,24 @@
   projectedPoints: number;
   draftedBy: string | null; // null if available, team name otherwise
   recommendationReason?: string;
+  
+  // Canonical fields for player badge wireframe compliance
+  year_product?: string;
+  name_full?: string;
+  team_code?: string;
+  position_rank?: string;
+  bye_week?: number;
+  ppg?: number;
+  yards?: number;
+  touchdowns?: number;
+  ecr?: number;
+  psa_grade_label?: string;
+  psa_grade_number?: number;
+  is_rookie?: boolean;
+  card_variety?: CardVariety;
+  team_name_full?: string;
+  photo_url?: string;
+  signature_render?: string;
   
   // Format specific consensus ranks
   ranks: {
@@ -134,7 +155,7 @@ export const ESPN_ID_MAPPING: { [key: string]: number } = {
   'garrettwilson': 4569618,
   'genosmith': 15864,
   'georgekittle': 3040151,
-  'georgepickens': 4426354,
+  'georgepickens': 4431615,
   'germiebernard': 4685261,
   'gunnarhelm': 4686728,
   'haroldfanninjr': 5083076,
@@ -281,6 +302,40 @@ export const ESPN_ID_MAPPING: { [key: string]: number } = {
   'zachariahbranch': 4870612,
   'zachcharbonnet': 4426385,
   'zayflowers': 4429615,
+  // Custom lookup aliases for suffix variations and missing entries
+  'patrickmahomes': 3139477,
+  'deebosamuel': 3126486,
+  'brianrobinson': 4241474,
+  'jamescook': 4379399,
+  'marvinharrison': 4432708,
+  'raheemmostert': 2971383,
+  'kennethwalker': 4567048,
+  'travisetienne': 4239996,
+};
+
+// Centralized helper to get player headshot URL
+export const getPlayerHeadshotUrl = (
+  name: string,
+  position: string,
+  team?: string,
+  espnId?: number | null
+): string | null => {
+  if (position === 'DST' && team) {
+    return getTeamLogoUrl(team);
+  }
+  
+  if (espnId) {
+    return `https://a.espncdn.com/i/headshots/nfl/players/full/${espnId}.png`;
+  }
+
+  // Sanitization matches lookup key format: lowercase, alphanumeric only
+  const cleanName = name.toLowerCase().replace(/[^a-z]/g, '').trim();
+  const mappedId = ESPN_ID_MAPPING[cleanName];
+  if (mappedId) {
+    return `https://a.espncdn.com/i/headshots/nfl/players/full/${mappedId}.png`;
+  }
+  
+  return null; // Signals to use position-specific local fallback
 };
 
 
@@ -469,8 +524,8 @@ const DST_NAMES = [
   { name: 'Seattle Seahawks', team: 'SEA', bye: 10 }
 ];
 
-export const generateMockRankings = (): Player[] => {
-  return [
+export const generateMockRankings = (year: number = 2026): Player[] => {
+  const defaultRankings: Player[] = [
   {
     rank: 1,
     espnId: 4430807,
@@ -6083,7 +6138,130 @@ export const generateMockRankings = (): Player[] => {
   }
 
   ];
+
+  let resolvedRankings = defaultRankings;
+  if (year !== 2026) {
+    resolvedRankings = generateHistoricalRankings(year, defaultRankings);
+  }
+
+  // Populate is_rookie and other canonical properties dynamically for robust client rendering!
+  return resolvedRankings.map(p => {
+    const cleanPName = p.name.toLowerCase().replace(/[^a-z]/g, '').trim();
+    const registryMatch = PLAYER_REGISTRY.find(rp => rp.name.toLowerCase().replace(/[^a-z]/g, '').trim() === cleanPName && rp.position === p.position);
+    
+    const rookieSeason = registryMatch ? registryMatch.rookieSeason : (p.position === 'DST' || p.position === 'K' ? 2000 : 2023);
+    const isRookie = rookieSeason === year;
+
+    return {
+      ...p,
+      is_rookie: isRookie,
+      year_product: String(year),
+      psa_grade_label: 'GEM MT',
+      psa_grade_number: 10,
+    };
+  });
 };
+
+function generateHistoricalRankings(year: number, defaultRankings: Player[]): Player[] {
+  // 1. Filter active players in PLAYER_REGISTRY for the selected year
+  const activeRegistry = PLAYER_REGISTRY.filter(p => p.rookieSeason <= year && p.lastSeason >= year);
+
+  // 2. Score and rank them
+  const scoredRegistry = activeRegistry.map(p => {
+    const defaultMatch = defaultRankings.find(dr => dr.name.toLowerCase() === p.name.toLowerCase() && dr.position === p.position);
+    let baseScore = 0;
+    if (defaultMatch) {
+      baseScore = 1000 - defaultMatch.rank;
+    } else {
+      const exp = Math.min(10, year - p.rookieSeason);
+      const isPremiumPos = ['QB', 'RB', 'WR', 'TE'].includes(p.position);
+      let nameHash = 0;
+      for (let i = 0; i < p.name.length; i++) {
+        nameHash += p.name.charCodeAt(i);
+      }
+      baseScore = (isPremiumPos ? 200 : 50) + exp * 15 + (nameHash % 100);
+    }
+    
+    return { player: p, score: baseScore };
+  });
+
+  // Sort registry by score descending
+  scoredRegistry.sort((a, b) => b.score - a.score);
+
+  // Take the top 240 players
+  const topRegistry: RegistryPlayer[] = scoredRegistry.slice(0, 240).map(s => s.player);
+
+  // Add 16 DST teams
+  const dstTeams = ['KC', 'SF', 'BAL', 'PHI', 'DET', 'DAL', 'CLE', 'BUF', 'PIT', 'HOU', 'MIA', 'CHI', 'JAX', 'TB', 'SEA', 'NYJ'];
+  dstTeams.forEach(team => {
+    topRegistry.push({
+      name: `${team} Defense`,
+      position: 'DST',
+      espnId: null,
+      rookieSeason: 2000,
+      lastSeason: 2030,
+      team: team
+    });
+  });
+
+  // Map registry players to Player interface
+  const positionCounts: { [pos: string]: number } = { QB: 0, RB: 0, WR: 0, TE: 0, K: 0, DST: 0 };
+  
+  return topRegistry.map((p, idx) => {
+    const rank = idx + 1;
+    positionCounts[p.position] = (positionCounts[p.position] || 0) + 1;
+    const posRank = `${p.position}${positionCounts[p.position]}`;
+    
+    let qbBonus = p.position === 'QB' ? 65 : 0;
+    let projectedPoints = Math.round(330 - (rank * 1.1) + qbBonus);
+    if (projectedPoints < 20) projectedPoints = 20;
+
+    let nameHash = 0;
+    for (let i = 0; i < p.name.length; i++) {
+      nameHash += p.name.charCodeAt(i);
+    }
+    const variance = (nameHash % 9) - 4;
+    const rankFactor = Math.min(3.0, rank / 50.0);
+    const adp = Math.max(1.0, parseFloat((rank + variance * rankFactor).toFixed(1)));
+
+    const pprShift = p.position === 'WR' ? -2 : p.position === 'RB' ? 2 : 0;
+    const pprRank = Math.max(1, Math.min(250, rank + pprShift));
+    const dynastyRank = Math.max(1, Math.min(250, rank + (p.position === 'K' || p.position === 'DST' ? 30 : 0)));
+
+    const expertRanks: { [exp: string]: { halfPpr: number; ppr: number; dynasty: number } } = {};
+    ['Andy', 'Mike', 'Jason'].forEach(exp => {
+      let bias = 0;
+      if (exp === 'Andy' && p.position === 'WR') bias = -2;
+      if (exp === 'Mike' && p.position === 'RB') bias = -1;
+      if (exp === 'Jason' && p.position === 'TE') bias = -3;
+      
+      expertRanks[exp] = {
+        halfPpr: Math.max(1, Math.min(250, rank + bias)),
+        ppr: Math.max(1, Math.min(250, pprRank + bias)),
+        dynasty: Math.max(1, Math.min(250, dynastyRank + bias))
+      };
+    });
+
+    return {
+      rank,
+      espnId: p.espnId,
+      name: p.name,
+      position: p.position as any,
+      team: p.team,
+      bye: (nameHash % 9) + 5,
+      adp,
+      posRank,
+      projectedPoints,
+      draftedBy: null,
+      ranks: {
+        halfPpr: rank,
+        ppr: pprRank,
+        dynasty: dynastyRank
+      },
+      expertRanks
+    };
+  });
+}
 
 export const MOCK_NEWS: NewsStory[] = [
   {

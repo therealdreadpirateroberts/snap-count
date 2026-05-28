@@ -265,7 +265,7 @@ export const useRankingsStore = create<RankingsState>((set, get) => ({
           throw new Error('Network response not OK');
         }
       } catch (err) {
-        log('RankingsStore', '📡 [SyncEngine] Live network rankings fetch failed. Failing sync...', err);
+        log('RankingsStore', '[SyncEngine] Live network rankings fetch failed. Failing sync...', err);
         throw err;
       }
       
@@ -329,7 +329,7 @@ export const useRankingsStore = create<RankingsState>((set, get) => ({
         });
       } else {
         // Dynamic Live Sync Simulation
-        log('RankingsStore', '📡 [SyncEngine] Emulating live consensus ranking updates...');
+        log('RankingsStore', '[SyncEngine] Emulating live consensus ranking updates...');
         const originalList = generateMockRankings();
         
         baseList = originalList.map((p) => {
@@ -417,7 +417,7 @@ export const useRankingsStore = create<RankingsState>((set, get) => ({
       
       const draftStatus = useDraftStore.getState().draftStatus;
       if (draftStatus === 'drafting') {
-        log('RankingsStore', '📡 [SyncEngine] Sync successfully loaded new ranks in background, but active draft is in progress. Skipping live players override to prevent draft corruption.');
+        log('RankingsStore', '[SyncEngine] Sync successfully loaded new ranks in background, but active draft is in progress. Skipping live players override to prevent draft corruption.');
       } else {
         usePlayerStore.getState().setPlayers(finalSorted);
       }
@@ -428,9 +428,9 @@ export const useRankingsStore = create<RankingsState>((set, get) => ({
         syncError: null
       });
       
-      log('RankingsStore', '📡 [SyncEngine] ECR consensus rankings successfully synced and updated in Zustand store.');
+      log('RankingsStore', '[SyncEngine] ECR consensus rankings successfully synced and updated in Zustand store.');
     } catch (err: any) {
-      log('RankingsStore', '📡 [SyncEngine] Sync failed: ', err);
+      log('RankingsStore', '[SyncEngine] Sync failed: ', err);
       set({
         syncStatus: 'stale',
         syncError: err?.message || 'Unknown network error'

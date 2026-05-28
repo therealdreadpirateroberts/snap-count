@@ -43,3 +43,10 @@ app-example
 # generated native folders
 /ios
 /android
+
+# Scratch and temp outputs
+dist_temp/
+scratch/
+scratch_*.json
+scratch_*.txt
+*.zip

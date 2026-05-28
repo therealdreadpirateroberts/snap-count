@@ -93,7 +93,7 @@ export default function EditProfileModal({ visible, onClose }: EditProfileModalP
     <View style={activeStyles.modalOverlay}>
       <View style={activeStyles.modalContentCard}>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-          <Text style={activeStyles.modalTitle}>UPDATE COACH PROFILE</Text>
+          <Text style={activeStyles.modalTitle}>UPDATE ACCOUNT</Text>
           <Pressable
             onPress={() => {
               triggerHaptic(Haptics.ImpactFeedbackStyle.Light);
@@ -214,8 +214,8 @@ const createStyles = (Colors: typeof import('@/constants/theme').LightColors) =>
       zIndex: 10000,
     },
     modalContentCard: {
-      backgroundColor: Colors.surface,
-      borderColor: Colors.coltsNavyLight,
+      backgroundColor: Colors.liftedCanvas,
+      borderColor: Colors.chromeSilver,
       borderWidth: 1,
       borderRadius: 12,
       padding: Spacing.four,
@@ -288,8 +288,8 @@ const createStyles = (Colors: typeof import('@/constants/theme').LightColors) =>
     },
     modalSingleLineInput: {
       height: 40,
-      backgroundColor: Colors.surfaceLifted,
-      borderColor: Colors.coltsNavyLight,
+      backgroundColor: Colors.liftedCharcoal,
+      borderColor: Colors.chromeSilver,
       borderWidth: 1,
       borderRadius: 8,
       paddingHorizontal: 12,
@@ -310,12 +310,12 @@ const createStyles = (Colors: typeof import('@/constants/theme').LightColors) =>
       justifyContent: 'center',
       alignItems: 'center',
       backgroundColor: 'transparent',
-      borderColor: Colors.coltsNavyLight,
+      borderColor: Colors.chromeSilver,
       borderWidth: 1,
     },
     modalBtnPrimary: {
-      backgroundColor: Colors.coltsNavy,
-      borderColor: Colors.coltsNavy,
+      backgroundColor: Colors.pylonOrange,
+      borderColor: Colors.pylonOrange,
       borderWidth: 1,
       flex: 1,
     },

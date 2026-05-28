@@ -11,6 +11,7 @@ import Svg, { Path, Circle, Rect, Line, G, Defs, LinearGradient, Stop } from 're
 import * as Haptics from 'expo-haptics';
 import { useColors, Fonts, Colors } from '@/constants/theme';
 import { NewsStoryItem } from '@/utils/photographyStudio';
+import { PlayerHeadshot } from '@/components/PlayerHeadshot';
 
 export interface CoreCardItem {
   id: string;
@@ -134,8 +135,8 @@ export default function FeedCard({ tile, isDesktop, onPress }: FeedCardProps) {
           <Svg width="100%" height="160" viewBox="0 0 320 160" preserveAspectRatio="none">
             <Defs>
               <LinearGradient id="leadGrad" x1="0" y1="0" x2="1" y2="1">
-                <Stop offset="0%" stopColor={Colors.coltsNavy} />
-                <Stop offset="100%" stopColor={Colors.background} />
+                <Stop offset="0%" stopColor={Colors.deepFieldGreen} />
+                <Stop offset="100%" stopColor={Colors.obsidianBlack} />
               </LinearGradient>
             </Defs>
             <Rect width="320" height="160" fill="url(#leadGrad)" />
@@ -162,7 +163,7 @@ export default function FeedCard({ tile, isDesktop, onPress }: FeedCardProps) {
         key={card.id}
         style={({ pressed }) => [
           styles.tileCard,
-          { backgroundColor: themedColors.surface, borderColor: themedColors.coltsNavyLight },
+          { backgroundColor: themedColors.primaryAccent, borderColor: themedColors.midGray },
           isDesktop && styles.tileCardDesktop,
           pressed && { opacity: 0.96, transform: [{ scale: 0.98 }] }
         ]}
@@ -176,16 +177,16 @@ export default function FeedCard({ tile, isDesktop, onPress }: FeedCardProps) {
         </View>
 
         <View style={styles.tileContent}>
-          <Text style={[styles.tileKicker, { color: themedColors.secondaryAccent }]}>{card.kicker}</Text>
-          <Text style={[styles.tileTitle, { color: themedColors.primaryAccent }]}>{card.title}</Text>
-          <Text style={[styles.tileDescription, { color: themedColors.secondaryAccent }]} numberOfLines={3} ellipsizeMode="tail">
+          <Text style={[styles.tileKicker, { color: themedColors.obsidianBlack }]}>{card.kicker}</Text>
+          <Text style={[styles.tileTitle, { color: themedColors.obsidianBlack }]}>{card.title}</Text>
+          <Text style={[styles.tileDescription, { color: themedColors.obsidianBlack }]} numberOfLines={3} ellipsizeMode="tail">
             {card.description}
           </Text>
 
           <Pressable
             style={({ pressed }) => [
               styles.tileButton,
-              { backgroundColor: themedColors.surfaceLifted, borderColor: themedColors.coltsNavy },
+              { backgroundColor: themedColors.pylonOrange, borderColor: themedColors.pylonOrange },
               pressed && { opacity: 0.9 }
             ]}
             onPress={() => {
@@ -209,7 +210,7 @@ export default function FeedCard({ tile, isDesktop, onPress }: FeedCardProps) {
         key={story.id}
         style={({ pressed }) => [
           styles.tileCard,
-          { backgroundColor: themedColors.surface, borderColor: themedColors.coltsNavyLight },
+          { backgroundColor: themedColors.primaryAccent, borderColor: themedColors.midGray },
           isDesktop && styles.tileCardDesktop,
           pressed && { opacity: 0.96, transform: [{ scale: 0.98 }] }
         ]}
@@ -219,10 +220,10 @@ export default function FeedCard({ tile, isDesktop, onPress }: FeedCardProps) {
         }}
       >
         <View style={styles.tileImageContainer}>
-          <Image 
-            source={imageSource} 
-            style={styles.newsTileImage} 
-            resizeMode="cover"
+          <PlayerHeadshot 
+            name={story.playerName} 
+            position={story.position} 
+            style={[styles.newsTileImage, { resizeMode: 'contain', backgroundColor: 'rgba(12, 12, 12, 0.05)' }]} 
           />
           <View style={styles.tileImageOverlay} />
           
@@ -238,22 +239,22 @@ export default function FeedCard({ tile, isDesktop, onPress }: FeedCardProps) {
             <View style={[styles.newsTagBadge, { backgroundColor: story.tagColor }]}>
               <Text style={styles.newsTagText}>{story.tag}</Text>
             </View>
-            <Text style={[styles.newsTimeText, { color: themedColors.secondaryAccent }]}>{story.timeAgo} • {story.team}</Text>
+            <Text style={[styles.newsTimeText, { color: themedColors.obsidianBlack }]}>{story.timeAgo} • {story.team}</Text>
           </View>
 
-          <Text style={[styles.tileTitle, { color: themedColors.primaryAccent }]} numberOfLines={2} ellipsizeMode="tail">
+          <Text style={[styles.tileTitle, { color: themedColors.obsidianBlack }]} numberOfLines={2} ellipsizeMode="tail">
             {story.headline.toUpperCase()}
           </Text>
           
-          <Text style={[styles.newsTakeTextKicker, { color: themedColors.primaryAccent }]}>FANTASY IMPACT REACTION:</Text>
-          <Text style={[styles.newsTakeText, { color: themedColors.secondaryAccent }]} numberOfLines={3} ellipsizeMode="tail">
+          <Text style={[styles.newsTakeTextKicker, { color: themedColors.obsidianBlack }]}>FANTASY IMPACT REACTION:</Text>
+          <Text style={[styles.newsTakeText, { color: themedColors.obsidianBlack }]} numberOfLines={3} ellipsizeMode="tail">
             {story.take}
           </Text>
 
           <Pressable
             style={({ pressed }) => [
               styles.tileButton,
-              { backgroundColor: themedColors.surfaceLifted, borderColor: themedColors.coltsNavy },
+              { backgroundColor: themedColors.pylonOrange, borderColor: themedColors.pylonOrange },
               pressed && { opacity: 0.9 }
             ]}
             onPress={() => {
@@ -272,10 +273,14 @@ export default function FeedCard({ tile, isDesktop, onPress }: FeedCardProps) {
 const styles = StyleSheet.create({
   tileCard: {
     width: '100%',
-    borderWidth: 1,
+    borderWidth: 1.5,
     borderRadius: 16,
-    overflow: 'hidden',
     marginBottom: 16,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 4,
   },
   tileCardDesktop: {
     width: '48%',
@@ -285,6 +290,8 @@ const styles = StyleSheet.create({
     width: '100%',
     position: 'relative',
     overflow: 'hidden',
+    borderTopLeftRadius: 15,
+    borderTopRightRadius: 15,
   },
   newsTileImage: {
     width: '100%',

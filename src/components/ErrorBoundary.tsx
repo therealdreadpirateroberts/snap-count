@@ -62,7 +62,7 @@ export class ErrorBoundary extends Component<Props, State> {
               </View>
             )}
             <Pressable style={styles.resetBtn} onPress={this.handleReset}>
-              <Text style={styles.resetBtnText}>RESTORE VIEW ⚡</Text>
+              <Text style={styles.resetBtnText}>RESTORE VIEW</Text>
             </Pressable>
           </View>
         </View>
@@ -87,7 +87,7 @@ const styles = StyleSheet.create({
     maxWidth: 420,
     backgroundColor: '#2c2c2c',
     borderWidth: 1.5,
-    borderColor: '#bea98e',
+    borderColor: Colors.status.danger,
     borderRadius: 16,
     padding: Spacing.four,
     shadowColor: '#000',
@@ -131,18 +131,18 @@ const styles = StyleSheet.create({
     lineHeight: 15,
   },
   resetBtn: {
-    backgroundColor: '#bea98e',
+    backgroundColor: Colors.pylonOrange,
     paddingVertical: Spacing.two + 2,
     borderRadius: 8,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1.5,
-    borderColor: '#FFFFFF',
+    borderColor: Colors.pylonOrange,
   },
   resetBtnText: {
     fontFamily: Fonts.headings,
     fontSize: 13,
-    color: '#000000', // Solid black for AAA compliance (10.2:1 contrast)
+    color: Colors.primaryAccent, // Chalk White for perfect contrast on orange
     fontWeight: '800',
     letterSpacing: 0.8,
   },

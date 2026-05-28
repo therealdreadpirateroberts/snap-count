@@ -15,6 +15,6 @@ html, body, #root {
   width: 100% !important;
   height: 100% !important;
   overflow-x: hidden !important;
-  background-color: #F8FAFC !important; /* Premium light slate-blue background matching Colors.background */
+  background-color: #F8FAFC !important; /* Premium light slate-blue background matching Colors.obsidianBlack */
   -webkit-text-size-adjust: 100%;
 }

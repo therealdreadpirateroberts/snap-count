@@ -1,9 +1,8 @@
-import React from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { StyleSheet, View, Text, Pressable, ScrollView, Image, Platform, useWindowDimensions, LayoutAnimation, UIManager } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { usePlayerStore } from '@/store/usePlayerStore';
-import { ESPN_ID_MAPPING, getTeamLogoUrl } from '@/store/mockData';
 import { Colors, Fonts, Spacing, MaxContentWidth, useColors } from '@/constants/theme';
 import { useThemeStore } from '@/store/useThemeStore';
 import BackgroundTexture from '@/components/BackgroundTexture';
@@ -11,41 +10,14 @@ import AppHeader from '@/components/AppHeader';
 import AppTabBar from '@/components/AppTabBar';
 import * as Haptics from 'expo-haptics';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
+import { PlayerHeadshot } from '@/components/PlayerHeadshot';
 
 // Enable LayoutAnimation on Android
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
 }
 
-// Local illustrations map matching index.tsx
-const localImages = {
-  qb: require('../../assets/images/studio_qb.png'),
-  rb: require('../../assets/images/studio_rb.png'),
-  wr: require('../../assets/images/studio_wr.png'),
-  te: require('../../assets/images/studio_te.png'),
-  default: require('../../assets/images/studio_wr.png'),
-};
-
-const getLocalImageForPosition = (position: string) => {
-  const pos = (position || '').toLowerCase();
-  if (pos === 'qb') return localImages.qb;
-  if (pos === 'rb') return localImages.rb;
-  if (pos === 'wr') return localImages.wr;
-  if (pos === 'te') return localImages.te;
-  return localImages.default;
-};
-
-const getPlayerHeadshotUrlForNews = (name: string, position: string) => {
-  if (position === 'DST') {
-    return getTeamLogoUrl(name);
-  }
-  const nameKey = name.toLowerCase().replace(/[^a-z]/g, '');
-  const espnId = ESPN_ID_MAPPING[nameKey] ?? null;
-  if (espnId) {
-    return `https://a.espncdn.com/i/headshots/nfl/players/full/${espnId}.png`;
-  }
-  return `https://a.espncdn.com/combiner/i?img=/i/headshots/nfl/players/full/default.png&w=350&h=254`;
-};
+// Local illustrations map matching index.tsx is handled inside PlayerHeadshot
 
 function NewsContent() {
   const router = useRouter();
@@ -86,7 +58,7 @@ function NewsContent() {
 
   return (
     <View style={styles.container}>
-      <BackgroundTexture />
+      <BackgroundTexture backgroundColor={Colors.primaryAccent} />
       <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
         
         {/* Header Block - Subtitle prop completely removed to clean up second row */}
@@ -95,6 +67,13 @@ function NewsContent() {
           showBack={true}
           backText="BACK"
         />
+
+        {/* Mobile Greeting Banner */}
+        <View style={styles.mobileGreetingBanner}>
+          <Text style={styles.greetingMainText}>
+            SPILL THE TEA
+          </Text>
+        </View>
 
         {/* News List */}
         <ScrollView
@@ -116,7 +95,6 @@ function NewsContent() {
                 const playerTrend = firstPlayer ? firstPlayer.trend : 'up';
                 const playerTeam = firstPlayer ? getPlayerTeam(firstPlayer.name) : 'NFL';
                 
-                const imageSource = getLocalImageForPosition(playerPosition);
                 const trendColor = playerTrend === 'up' ? '#22C55E' : '#EF4444';
                 const trendIcon = playerTrend === 'up' ? '▲' : '▼';
                 
@@ -125,6 +103,7 @@ function NewsContent() {
                     key={story.id}
                     style={({ pressed }) => [
                       styles.tileCard,
+                      isExpanded && { height: 'auto' }, // Grow dynamically when expanded
                       isDesktop && styles.tileCardDesktop,
                       pressed && { opacity: 0.96, transform: [{ scale: 0.98 }] }
                     ]}
@@ -132,10 +111,11 @@ function NewsContent() {
                   >
                     {/* Aspect Ratio Graphic Banner */}
                     <View style={styles.tileImageContainer}>
-                      <Image 
-                        source={imageSource} 
-                        style={styles.newsTileImage} 
-                        resizeMode="cover"
+                      <PlayerHeadshot 
+                        name={playerName} 
+                        position={playerPosition} 
+                        team={playerTeam}
+                        style={[styles.newsTileImage, { resizeMode: 'contain', backgroundColor: 'rgba(12, 12, 12, 0.05)' }]} 
                       />
                       <View style={styles.tileImageOverlay} />
                       
@@ -190,14 +170,17 @@ function NewsContent() {
                             <View style={styles.playersWrapper}>
                               {story.playersAffected.map((player, idx) => {
                                 const trendUp = player.trend === 'up';
-                                const headshotUrl = getPlayerHeadshotUrlForNews(player.name, player.position);
                                 
                                 return (
                                   <View key={idx} style={[
                                     styles.playerChip,
                                     trendUp ? styles.trendUpChip : styles.trendDownChip
                                   ]}>
-                                    <Image source={{ uri: headshotUrl }} style={styles.playerChipHeadshot} />
+                                    <PlayerHeadshot 
+                                      name={player.name} 
+                                      position={player.position} 
+                                      style={styles.playerChipHeadshot} 
+                                    />
                                     <Text style={[
                                       styles.playerChipText,
                                       trendUp ? styles.trendUpText : styles.trendDownText
@@ -251,7 +234,7 @@ function createStyles(Colors: typeof import('@/constants/theme').LightColors) {
   return StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: Colors.background,
+      backgroundColor: Colors.primaryAccent, // Chalk White primary base canvas
     },
     safeArea: {
       flex: 1,
@@ -273,10 +256,10 @@ function createStyles(Colors: typeof import('@/constants/theme').LightColors) {
       gap: 16,
     },
     tileCard: {
-      backgroundColor: Colors.surface,
+      backgroundColor: Colors.primaryAccent, // Chalk White cards
       borderRadius: 16,
       borderWidth: 1.5,
-      borderColor: Colors.coltsNavyLight,
+      borderColor: Colors.midGray, // Mid-Gray borders for MD3 containment
       overflow: 'hidden',
       shadowColor: '#000000',
       shadowOffset: { width: 0, height: 2 },
@@ -285,6 +268,7 @@ function createStyles(Colors: typeof import('@/constants/theme').LightColors) {
       elevation: 2,
       width: '100%',
       marginBottom: 8,
+      height: 340, // Match homepage tiles exactly when collapsed
     },
     tileCardDesktop: {
       width: '48.5%', // 2 columns with spacing on desktop
@@ -293,13 +277,13 @@ function createStyles(Colors: typeof import('@/constants/theme').LightColors) {
     tileImageContainer: {
       height: 160,
       width: '100%',
-      backgroundColor: Colors.surfaceLifted,
+      backgroundColor: Colors.primaryAccent,
       overflow: 'hidden',
       position: 'relative',
       justifyContent: 'center',
       alignItems: 'center',
       borderBottomWidth: 1,
-      borderBottomColor: Colors.coltsNavyLight,
+      borderBottomColor: Colors.midGray,
     },
     newsTileImage: {
       width: '100%',
@@ -316,17 +300,17 @@ function createStyles(Colors: typeof import('@/constants/theme').LightColors) {
       backgroundColor: '#0c0c0c',
       borderWidth: 1,
       borderRadius: 6,
-      paddingVertical: 4,
+      paddingVertical: 3,
       paddingHorizontal: 8,
     },
     newsTrendBadgeText: {
-      fontSize: 10,
+      fontSize: 8,
       fontFamily: Fonts.stats,
       fontWeight: 'bold',
     },
     tileContent: {
       padding: 16,
-      gap: 12,
+      gap: 8,
     },
     newsMetaRow: {
       flexDirection: 'row',
@@ -340,59 +324,57 @@ function createStyles(Colors: typeof import('@/constants/theme').LightColors) {
       marginRight: 8,
     },
     newsTagText: {
-      fontSize: 9,
+      fontSize: 7,
       fontFamily: Fonts.headings,
       fontWeight: 'bold',
       color: '#000000', // Mandatory solid black overlay
     },
     newsTimeText: {
-      fontSize: 10,
+      fontSize: 9,
       fontFamily: Fonts.stats,
-      color: Colors.secondaryAccent,
+      color: Colors.slate, // Slate textual chrome
     },
     tileTitle: {
       fontFamily: Fonts.headings,
       fontSize: 18,
       fontWeight: 'bold',
-      color: Colors.primaryAccent,
+      color: Colors.obsidianBlack, // Obsidian Black title
       lineHeight: 22,
     },
     newsTakeTextKicker: {
-      fontSize: 10,
+      fontSize: 8,
       fontFamily: Fonts.headings,
-      color: Colors.hofYellow, // Vibrant Yellow CTA
+      color: Colors.pylonOrange, // Pylon Orange kicker for high contrast
       marginTop: 4,
       marginBottom: 2,
     },
     newsTakeText: {
-      fontSize: 12,
+      fontSize: 10,
       fontFamily: Fonts.body,
-      color: Colors.primaryAccent,
-      lineHeight: 16,
+      color: Colors.obsidianBlack, // Obsidian Black text
+      lineHeight: 14,
     },
     tileButton: {
-      height: 40,
-      borderRadius: 20,
-      backgroundColor: Colors.hofYellow,
-      justifyContent: 'center',
-      alignItems: 'center',
-      borderWidth: 1.5,
-      borderColor: Colors.hofYellow,
-      paddingHorizontal: 20,
       alignSelf: 'flex-start',
-      marginTop: 8,
+      borderWidth: 1,
+      borderRadius: 30,
+      backgroundColor: Colors.pylonOrange, // Solid Pylon Orange Action CTA
+      borderColor: Colors.pylonOrange,
+      paddingVertical: 5,
+      paddingHorizontal: 12,
+      marginTop: 6,
     },
     tileButtonText: {
       fontFamily: Fonts.headings,
-      fontSize: 11,
+      fontSize: 9,
       fontWeight: 'bold',
-      color: '#000000',
+      color: Colors.primaryAccent, // Chalk White overlay text
       letterSpacing: 0.5,
     },
     newsSectionKicker: {
       fontSize: 10,
       fontFamily: Fonts.headings,
-      color: Colors.secondaryAccent,
+      color: Colors.slate,
       opacity: 0.8,
       marginTop: 4,
       marginBottom: 4,
@@ -401,13 +383,13 @@ function createStyles(Colors: typeof import('@/constants/theme').LightColors) {
     newsSummaryText: {
       fontSize: 13,
       fontFamily: Fonts.body,
-      color: Colors.primaryAccent,
+      color: Colors.obsidianBlack, // Obsidian Black summary
       lineHeight: 18,
     },
     expandedSection: {
       gap: 4,
       borderTopWidth: 1,
-      borderTopColor: Colors.coltsNavyLight,
+      borderTopColor: Colors.midGray, // Mid-Gray divider line
       paddingTop: 12,
       marginTop: 4,
     },
@@ -463,6 +445,18 @@ function createStyles(Colors: typeof import('@/constants/theme').LightColors) {
       fontSize: 14,
       color: Colors.secondaryAccent,
       opacity: 0.6,
+    },
+    mobileGreetingBanner: {
+      paddingHorizontal: Spacing.three,
+      paddingTop: Spacing.three,
+      marginBottom: 8,
+    },
+    greetingMainText: {
+      fontFamily: Fonts.headings,
+      fontSize: 26,
+      fontWeight: 'bold',
+      color: Colors.obsidianBlack,
+      letterSpacing: 0.5,
     },
   });
 }

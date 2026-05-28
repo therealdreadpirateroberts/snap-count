@@ -1,6 +1,7 @@
 import React, { useMemo, useRef, useEffect, useState } from 'react';
 import { StyleSheet, View, Text, Pressable, ScrollView, Animated, Platform, TouchableOpacity } from 'react-native';
 import * as Haptics from 'expo-haptics';
+import Svg, { Defs, LinearGradient, Stop, Rect } from 'react-native-svg';
 import { useColors, Fonts, Spacing } from '@/constants/theme';
 
 interface DraftPositionSelectorProps {
@@ -8,6 +9,8 @@ interface DraftPositionSelectorProps {
   userPosition: number;
   onSelectLeagueSize: (size: number) => void;
   onSelectUserPosition: (pos: number) => void;
+  hidePosition?: boolean;
+  hideLeagueSize?: boolean;
 }
 
 export default function DraftPositionSelector({
@@ -15,6 +18,8 @@ export default function DraftPositionSelector({
   userPosition,
   onSelectLeagueSize,
   onSelectUserPosition,
+  hidePosition = false,
+  hideLeagueSize = false,
 }: DraftPositionSelectorProps) {
   const Colors = useColors();
   
@@ -55,7 +60,7 @@ export default function DraftPositionSelector({
 
   // Auto-scroll to center active cell
   useEffect(() => {
-    if (containerWidth > 0 && userPosition) {
+    if (containerWidth > 0 && userPosition && !hidePosition) {
       const cellWidth = 46;
       const gap = 10;
       const paddingHorizontal = 8;
@@ -66,7 +71,7 @@ export default function DraftPositionSelector({
       }, 100);
       return () => clearTimeout(timer);
     }
-  }, [userPosition, containerWidth]);
+  }, [userPosition, containerWidth, hidePosition]);
 
   const triggerHaptic = async (style = Haptics.ImpactFeedbackStyle.Light) => {
     if (Platform.OS !== 'web') {
@@ -82,73 +87,95 @@ export default function DraftPositionSelector({
   return (
     <View style={activeStyles.container}>
       {/* DRAFT POSITION SCROLL WHEEL */}
-      <View style={activeStyles.wheelHeaderRow}>
-        <Text style={activeStyles.sectionHeader}>YOUR DRAFT POSITION</Text>
-      </View>
+      {!hidePosition && (
+        <>
+          <View style={activeStyles.wheelHeaderRow}>
+            <Text style={activeStyles.sectionHeader}>YOUR DRAFT POSITION</Text>
+          </View>
 
-      <View style={activeStyles.wheelContainer}>
-        <ScrollView
-          ref={wheelScrollRef}
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={activeStyles.wheelScroll}
-          keyboardShouldPersistTaps="always"
-          onLayout={(e) => setContainerWidth(e.nativeEvent.layout.width)}
-        >
-          {pickWheelOptions.map((num) => {
-            const active = userPosition === num;
-            return (
-              <TouchableOpacity
-                key={num}
-                style={[activeStyles.wheelCell, active && activeStyles.wheelCellActive]}
-                onPress={() => {
-                  triggerHaptic(Haptics.ImpactFeedbackStyle.Light);
-                  onSelectUserPosition(num);
-                }}
-                activeOpacity={0.7}
-              >
-                {active && (
-                  <Animated.View 
-                    style={[
-                      activeStyles.activeCellPulseBorder, 
-                      { opacity: pulseAnim }
-                    ]} 
-                    pointerEvents="none"
-                  />
-                )}
-                <Text 
-                  style={[activeStyles.wheelCellText, active && activeStyles.wheelCellTextActive]}
-                  pointerEvents="none"
-                >
-                  {num}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
-        </ScrollView>
-      </View>
+          <View style={activeStyles.wheelContainer}>
+            <ScrollView
+              ref={wheelScrollRef}
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={activeStyles.wheelScroll}
+              keyboardShouldPersistTaps="always"
+              onLayout={(e) => setContainerWidth(e.nativeEvent.layout.width)}
+            >
+              {pickWheelOptions.map((num) => {
+                const active = userPosition === num;
+                return (
+                  <TouchableOpacity
+                    key={num}
+                    style={[activeStyles.wheelCell, active && activeStyles.wheelCellActive]}
+                    onPress={() => {
+                      triggerHaptic(Haptics.ImpactFeedbackStyle.Light);
+                      onSelectUserPosition(num);
+                    }}
+                    activeOpacity={0.7}
+                  >
+                    {active && (
+                      <Animated.View 
+                        style={[
+                          activeStyles.activeCellPulseBorder, 
+                          { opacity: pulseAnim }
+                        ]} 
+                        pointerEvents="none"
+                      />
+                    )}
+                    <Text 
+                      style={[activeStyles.wheelCellText, active && activeStyles.wheelCellTextActive]}
+                      pointerEvents="none"
+                    >
+                      {num}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+            <View 
+              style={activeStyles.rightFadeAffordance} 
+              pointerEvents="none"
+            >
+              <Svg width="100%" height="100%">
+                <Defs>
+                  <LinearGradient id="rightFade" x1="0" y1="0" x2="1" y2="0">
+                    <Stop offset="0" stopColor={Colors.primaryAccent} stopOpacity="0" />
+                    <Stop offset="1" stopColor={Colors.primaryAccent} stopOpacity="1" />
+                  </LinearGradient>
+                </Defs>
+                <Rect width="100%" height="100%" fill="url(#rightFade)" />
+              </Svg>
+            </View>
+          </View>
+        </>
+      )}
 
       {/* LEAGUE SIZE CAPSULE SELECTOR */}
-      <Text style={activeStyles.sectionHeader}>LEAGUE SIZE (TEAMS)</Text>
-      <View style={activeStyles.capsuleRow}>
-        {([8, 10, 12, 14, 16] as const).map((size) => {
-          const active = leagueSize === size;
-          return (
-            <Pressable
-              key={size}
-              style={[activeStyles.capsuleChip, active && activeStyles.capsuleChipActive]}
-              onPress={() => {
-                triggerHaptic(Haptics.ImpactFeedbackStyle.Medium);
-                onSelectLeagueSize(size);
-              }}
-            >
-              <Text style={[activeStyles.capsuleText, active && activeStyles.capsuleTextActive]}>
-                {size}
-              </Text>
-            </Pressable>
-          );
-        })}
-      </View>
+      {!hideLeagueSize && (
+        <>
+          <Text style={activeStyles.sectionHeader}>LEAGUE SIZE (TEAMS)</Text>
+          <View style={activeStyles.capsuleRow}>
+            {([8, 10, 12, 14, 16] as const).map((size) => {
+              const active = leagueSize === size;
+              return (
+                <Pressable
+                  key={size}
+                  style={[activeStyles.capsuleChip, active && activeStyles.capsuleChipActive]}
+                  onPress={() => {
+                    triggerHaptic(Haptics.ImpactFeedbackStyle.Medium);
+                    onSelectLeagueSize(size);
+                  }}
+                >
+                  <Text style={[activeStyles.capsuleText, active && activeStyles.capsuleTextActive]}>
+                    {size}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+        </>
+      )}
     </View>
   );
 }
@@ -161,25 +188,20 @@ const createStyles = (Colors: typeof import('@/constants/theme').LightColors) =>
     sectionHeader: {
       fontFamily: Fonts.stats,
       fontSize: 9.5,
-      color: Colors.secondaryAccent,
+      color: Colors.obsidianBlack,
       fontWeight: 'bold',
       letterSpacing: 1.5,
-      marginTop: Spacing.two,
+      marginTop: 0,
       marginBottom: Spacing.one,
     },
     wheelHeaderRow: {
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
-      marginTop: Spacing.two,
+      marginTop: 0,
     },
     wheelContainer: {
-      backgroundColor: Colors.surfaceLifted,
-      borderColor: Colors.coltsNavyLight,
-      borderWidth: 1,
-      borderRadius: 16,
       paddingVertical: Spacing.two,
-      ...Colors.shadows,
     },
     wheelScroll: {
       paddingHorizontal: Spacing.two,
@@ -189,9 +211,9 @@ const createStyles = (Colors: typeof import('@/constants/theme').LightColors) =>
       width: 46,
       height: 46,
       borderRadius: 23,
-      borderWidth: 1,
-      borderColor: Colors.coltsNavyLight,
-      backgroundColor: Colors.surface,
+      borderWidth: 1.5,
+      borderColor: Colors.midGray,
+      backgroundColor: '#FFFFFF',
       justifyContent: 'center',
       alignItems: 'center',
     },
@@ -204,10 +226,10 @@ const createStyles = (Colors: typeof import('@/constants/theme').LightColors) =>
       fontFamily: Fonts.headings,
       fontSize: 14,
       fontWeight: 'bold',
-      color: Colors.secondaryAccent,
+      color: Colors.obsidianBlack,
     },
     wheelCellTextActive: {
-      color: '#000000',
+      color: Colors.obsidianBlack,
     },
     activeCellPulseBorder: {
       ...StyleSheet.absoluteFillObject,
@@ -221,9 +243,9 @@ const createStyles = (Colors: typeof import('@/constants/theme').LightColors) =>
     },
     capsuleChip: {
       flex: 1,
-      backgroundColor: Colors.surface,
-      borderColor: Colors.coltsNavyLight,
-      borderWidth: 1,
+      backgroundColor: '#FFFFFF',
+      borderColor: Colors.midGray,
+      borderWidth: 1.5,
       borderRadius: 22,
       height: 44,
       justifyContent: 'center',
@@ -238,11 +260,19 @@ const createStyles = (Colors: typeof import('@/constants/theme').LightColors) =>
     capsuleText: {
       fontFamily: Fonts.headings,
       fontSize: 12,
-      color: Colors.secondaryAccent,
+      color: Colors.obsidianBlack,
       fontWeight: 'bold',
     },
     capsuleTextActive: {
-      color: '#000000',
+      color: Colors.obsidianBlack,
+    },
+    rightFadeAffordance: {
+      position: 'absolute',
+      top: 0,
+      bottom: 0,
+      right: 0,
+      width: 32,
+      zIndex: 10,
     },
   });
 };

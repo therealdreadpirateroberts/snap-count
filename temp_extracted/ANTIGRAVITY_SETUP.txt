@@ -1,0 +1,46 @@
+ANTIGRAVITY 2.0 — SETUP INSTRUCTIONS FOR AI AGENT
+==================================================
+Paste this prompt into Antigravity to tell it how to use the
+AI_AGENT_PRINCIPLES.md file.
+
+
+==============================================
+COPY-PASTE THIS PROMPT INTO ANTIGRAVITY 2.0
+==============================================
+
+I am providing you with a file called AI_AGENT_PRINCIPLES.md. This file
+is the canonical source of truth for how you should think, build, and
+verify work on this project. It governs every agent and every task.
+
+Please do the following, in order:
+
+1. Find where Antigravity 2.0 expects custom agent instructions, system
+   prompts, or rules. This may be:
+   - A "Custom Instructions" or "Agent Rules" panel in Settings
+   - A "System Prompt" field when creating an agent
+   - An AGENTS.md or similar file in the project root
+   - A configuration file referenced in Antigravity's documentation
+
+2. Load the contents of AI_AGENT_PRINCIPLES.md into that location. If
+   the platform supports file references, point to the file directly.
+   If it only accepts pasted text, paste the full contents.
+
+3. Confirm the file is loaded by quoting back to me the names of the
+   three layers defined in the document (Layer 1, Layer 2, Layer 3).
+   If you cannot quote them back, the file is not loaded correctly.
+
+4. Apply these principles to every task you perform from this point
+   forward — coding, design, audit, refactor, or anything else.
+
+5. When in doubt about any decision, refer to the "When Principles
+   Conflict" section at the bottom of the file and grill me using the
+   grilling format specified in Layer 3.
+
+If you cannot find the right location to load custom instructions,
+stop and ask me where to put them. Do not proceed with any tasks
+until the principles file is properly loaded and confirmed.
+
+
+==============================================
+END OF SETUP INSTRUCTIONS
+==============================================

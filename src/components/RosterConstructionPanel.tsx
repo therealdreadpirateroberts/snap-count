@@ -39,7 +39,7 @@ export default function RosterConstructionPanel({
     if (key === 'FLEX') return { bg: '#4F5D75', text: '#FFFFFF', border: '#4F5D75' };
     if (key === 'BENCH') return { bg: '#2D3142', text: '#FFFFFF', border: '#2D3142' };
     if (key === 'IR') return { bg: '#1C1E26', text: '#FFFFFF', border: '#1C1E26' };
-    return { bg: Colors.surfaceLifted, text: Colors.primaryAccent, border: Colors.coltsNavyLight };
+    return { bg: Colors.liftedCharcoal, text: Colors.primaryAccent, border: Colors.chromeSilver };
   };
 
   const triggerHaptic = async (style = Haptics.ImpactFeedbackStyle.Light) => {
@@ -106,7 +106,7 @@ export default function RosterConstructionPanel({
                   hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
                 >
                   <Svg width={14} height={14} viewBox="0 0 24 24" fill="none">
-                    <Path d="M5 12H19" stroke={isMin ? 'rgba(255,255,255,0.2)' : '#ffffff'} strokeWidth={2.5} strokeLinecap="round" />
+                    <Path d="M5 12H19" stroke={isMin ? Colors.midGray : Colors.obsidianBlack} strokeWidth={2.5} strokeLinecap="round" />
                   </Svg>
                 </Pressable>
                 
@@ -128,7 +128,7 @@ export default function RosterConstructionPanel({
                   hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
                 >
                   <Svg width={14} height={14} viewBox="0 0 24 24" fill="none">
-                    <Path d="M12 5V19M5 12H19" stroke={isMax ? 'rgba(255,255,255,0.2)' : '#ffffff'} strokeWidth={2.5} strokeLinecap="round" />
+                    <Path d="M12 5V19M5 12H19" stroke={isMax ? Colors.midGray : Colors.obsidianBlack} strokeWidth={2.5} strokeLinecap="round" />
                   </Svg>
                 </Pressable>
               </View>
@@ -136,10 +136,6 @@ export default function RosterConstructionPanel({
           );
         })}
       </View>
-      
-      <Text style={activeStyles.rosterPanelFooter}>
-        * Dynamically updates draft length. Currently: {activeRosterCount} draft rounds ({activeRosterCount} rounds active, {irRosterCount} IR slot{irRosterCount !== 1 ? 's' : ''} inactive).
-      </Text>
     </View>
   );
 }
@@ -147,7 +143,7 @@ export default function RosterConstructionPanel({
 const createStyles = (Colors: typeof import('@/constants/theme').LightColors) => {
   return StyleSheet.create({
     rosterPanel: {
-      backgroundColor: Colors.surfaceLifted,
+      backgroundColor: Colors.liftedCharcoal,
       paddingHorizontal: Spacing.three,
       paddingVertical: Spacing.three,
       gap: 10,
@@ -171,10 +167,10 @@ const createStyles = (Colors: typeof import('@/constants/theme').LightColors) =>
       justifyContent: 'space-between',
       paddingVertical: 4,
       paddingHorizontal: 12,
-      backgroundColor: Colors.surface,
+      backgroundColor: Colors.deepGraphiteCharcoal,
       borderRadius: 12,
       borderWidth: 1,
-      borderColor: Colors.coltsNavyLight,
+      borderColor: Colors.chromeSilver,
       minHeight: 44,
     },
     rosterRowLeft: {
@@ -215,9 +211,9 @@ const createStyles = (Colors: typeof import('@/constants/theme').LightColors) =>
       width: 32,
       height: 32,
       borderRadius: 16,
-      backgroundColor: Colors.coltsNavy,
-      borderWidth: 1,
-      borderColor: Colors.coltsNavy,
+      backgroundColor: 'transparent',
+      borderWidth: 1.5,
+      borderColor: Colors.midGray,
       justifyContent: 'center',
       alignItems: 'center',
     },

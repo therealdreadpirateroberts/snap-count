@@ -95,6 +95,8 @@ export interface MyRanksEditorProps {
   scrollY: Animated.Value;
   headerTranslateY: Animated.AnimatedInterpolation<string | number>;
   headerMaxHeight: number;
+  onScrollAction?: () => void;
+  onPlayerPress?: (player: Player) => void;
 }
 
 export default function MyRanksEditor({
@@ -102,7 +104,9 @@ export default function MyRanksEditor({
   searchQuery,
   scrollY,
   headerTranslateY,
-  headerMaxHeight
+  headerMaxHeight,
+  onScrollAction,
+  onPlayerPress
 }: MyRanksEditorProps) {
   const Colors = useColors();
   const theme = useThemeStore((state) => state.theme);
@@ -583,8 +587,8 @@ export default function MyRanksEditor({
               style={{ padding: 4 }}
             >
               <Svg width={14} height={14} viewBox="0 0 24 24" fill="none">
-                <Path d="M11 4H4C2.89543 4 2 4.89543 2 6V20C2 21.1046 2.89543 22 4 22H18C19.1046 22 20 21.1046 20 20V13" stroke={Colors.primaryAccent} strokeWidth={2.5} strokeLinecap="round" />
-                <Path d="M18.5 2.5C19.3284 1.67157 20.6716 1.67157 21.5 2.5C22.3284 3.32843 22.3284 4.67157 21.5 5.5L12 15L8 16L9 12L18.5 2.5Z" stroke={Colors.primaryAccent} strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" />
+                <Path d="M11 4H4C2.89543 4 2 4.89543 2 6V20C2 21.1046 2.89543 22 4 22H18C19.1046 22 20 21.1046 20 20V13" stroke={Colors.obsidianBlack} strokeWidth={2.5} strokeLinecap="round" />
+                <Path d="M18.5 2.5C19.3284 1.67157 20.6716 1.67157 21.5 2.5C22.3284 3.32843 22.3284 4.67157 21.5 5.5L12 15L8 16L9 12L18.5 2.5Z" stroke={Colors.obsidianBlack} strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" />
               </Svg>
             </Pressable>
           </View>
@@ -660,11 +664,12 @@ export default function MyRanksEditor({
         panHandlers={isSuggestion ? null : getPanResponder(item).panHandlers}
         dragY={dragY}
         onAddPlayer={handleAddPlayerToMyRanks}
+        onPlayerPress={onPlayerPress}
         Colors={Colors}
         styles={activeStyles}
       />
     );
-  }, [draggedPlayerName, searchQuery, positionFilter, filteredPlayers, Colors, activeStyles]);
+  }, [draggedPlayerName, searchQuery, positionFilter, filteredPlayers, Colors, activeStyles, onPlayerPress]);
 
   return (
     <View style={activeStyles.container}>
@@ -678,11 +683,16 @@ export default function MyRanksEditor({
           const isSuggestion = (item as any).isSearchSuggestion;
           return isSuggestion ? `suggest-${item.name}` : `myrank-${item.name}`;
         }}
-        contentContainerStyle={[activeStyles.listContent, { paddingTop: headerMaxHeight + 72 }]}
+        contentContainerStyle={[activeStyles.listContent, { paddingTop: headerMaxHeight + 38 }]}
         showsVerticalScrollIndicator={false}
         onScroll={Animated.event(
           [{ nativeEvent: { contentOffset: { y: scrollY } } }],
-          { useNativeDriver: true }
+          { 
+            useNativeDriver: true,
+            listener: () => {
+              if (onScrollAction) onScrollAction();
+            }
+          }
         )}
         scrollEventThrottle={16}
         ListEmptyComponent={
@@ -800,6 +810,7 @@ function createStyles(Colors: typeof LightColors) {
   return StyleSheet.create({
     container: {
       flex: 1,
+      backgroundColor: Colors.primaryAccent,
     },
     listContent: {
       paddingHorizontal: Spacing.four,
@@ -817,28 +828,28 @@ function createStyles(Colors: typeof LightColors) {
     rankingsRowItem: {
       flexDirection: 'row',
       alignItems: 'center',
-      backgroundColor: Colors.glassSurface,
-      borderColor: Colors.glassBorder,
-      borderWidth: 1,
+      backgroundColor: '#FFFFFF',
+      borderColor: Colors.midGray,
+      borderWidth: 1.5,
       borderRadius: 8,
       paddingVertical: 6,
       paddingHorizontal: Spacing.two,
       gap: 8,
       height: 58,
       marginBottom: 8,
-      shadowColor: Colors.shadows.shadowColor,
-      shadowOffset: Colors.shadows.shadowOffset,
-      shadowOpacity: Colors.shadows.shadowOpacity,
-      shadowRadius: Colors.shadows.shadowRadius,
-      elevation: Colors.shadows.elevation,
+      shadowColor: '#000000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.04,
+      shadowRadius: 4,
+      elevation: 2,
     },
     rankingsRowItemDrafted: {
       opacity: 0.4,
-      backgroundColor: 'rgba(24, 24, 27, 0.5)',
+      backgroundColor: 'rgba(244, 245, 247, 0.6)',
     },
     rankingsRowItemSuggestion: {
-      borderColor: 'rgba(63, 63, 70, 0.5)',
-      backgroundColor: 'rgba(24, 24, 27, 0.3)',
+      borderColor: 'rgba(255, 87, 34, 0.25)',
+      backgroundColor: 'rgba(255, 87, 34, 0.03)',
     },
     rankingsRowLeftSection: {
       flexDirection: 'row',
@@ -849,16 +860,16 @@ function createStyles(Colors: typeof LightColors) {
       width: 36,
       height: 20,
       borderRadius: 5,
-      backgroundColor: Colors.surfaceLifted,
+      backgroundColor: Colors.primaryAccent,
       justifyContent: 'center',
       alignItems: 'center',
-      borderWidth: 1,
-      borderColor: Colors.coltsNavyLight,
+      borderWidth: 1.5,
+      borderColor: Colors.midGray,
     },
     normalRankText: {
       fontFamily: Fonts.stats,
       fontSize: 10,
-      color: Colors.secondaryAccent,
+      color: Colors.obsidianBlack,
       fontWeight: 'bold',
     },
     posRankBadge: {
@@ -887,12 +898,12 @@ function createStyles(Colors: typeof LightColors) {
       fontFamily: Fonts.body,
       fontSize: 13,
       fontWeight: 'bold',
-      color: Colors.primaryAccent,
+      color: Colors.obsidianBlack,
     },
     rankingsRowMeta: {
       fontFamily: Fonts.body,
       fontSize: 10,
-      color: Colors.secondaryAccent,
+      color: 'rgba(12, 12, 12, 0.6)',
     },
     playerNameDrafted: {
       textDecorationLine: 'line-through',
@@ -921,9 +932,9 @@ function createStyles(Colors: typeof LightColors) {
       width: 32,
       height: 32,
       borderRadius: 6,
-      backgroundColor: 'rgba(255, 255, 255, 0.05)',
-      borderWidth: 1,
-      borderColor: 'rgba(255, 255, 255, 0.1)',
+      backgroundColor: 'rgba(12, 12, 12, 0.05)',
+      borderWidth: 1.5,
+      borderColor: Colors.midGray,
       justifyContent: 'center',
       alignItems: 'center',
       ...Platform.select({
@@ -936,12 +947,12 @@ function createStyles(Colors: typeof LightColors) {
       }),
     },
     rankingsRowItemDragging: {
-      backgroundColor: '#27272a',
-      borderColor: '#ffffff',
+      backgroundColor: '#FFFFFF',
+      borderColor: Colors.pylonOrange,
       borderWidth: 1.5,
       shadowColor: '#000000',
       shadowOffset: { width: 0, height: 8 },
-      shadowOpacity: 0.4,
+      shadowOpacity: 0.1,
       shadowRadius: 12,
       elevation: 8,
       opacity: 0.95,
@@ -954,9 +965,9 @@ function createStyles(Colors: typeof LightColors) {
       }),
     },
     myRanksStatusBanner: {
-      backgroundColor: Colors.surfaceLifted,
-      borderColor: Colors.coltsNavyLight,
-      borderWidth: 1,
+      backgroundColor: Colors.primaryAccent,
+      borderColor: Colors.midGray,
+      borderWidth: 1.5,
       borderRadius: 8,
       paddingVertical: 10,
       paddingHorizontal: 12,
@@ -971,7 +982,7 @@ function createStyles(Colors: typeof LightColors) {
       fontFamily: Fonts.body,
       fontSize: 11,
       fontWeight: '600',
-      color: Colors.primaryAccent,
+      color: Colors.obsidianBlack,
     },
     myRanksStatusHint: {
       fontFamily: Fonts.body,
@@ -983,14 +994,14 @@ function createStyles(Colors: typeof LightColors) {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
-      backgroundColor: '#bea98e', // Champagne Bronze
+      backgroundColor: Colors.hofYellow, // Hall of Fame Yellow highlight / status warning
       paddingHorizontal: 12,
       paddingVertical: 8,
       borderRadius: 8,
       marginTop: 8,
       marginBottom: 8,
-      borderWidth: 1,
-      borderColor: 'rgba(0, 0, 0, 0.1)',
+      borderWidth: 1.5,
+      borderColor: Colors.midGray,
     },
     staleBannerContent: {
       flex: 1,
@@ -1015,7 +1026,7 @@ function createStyles(Colors: typeof LightColors) {
       fontFamily: Fonts.stats,
       fontSize: 9,
       fontWeight: 'bold',
-      color: '#bea98e',
+      color: Colors.hofYellow,
     },
     actionBar: {
       flexDirection: 'row',
@@ -1028,9 +1039,9 @@ function createStyles(Colors: typeof LightColors) {
       flex: 1,
       height: 34,
       borderRadius: 6,
-      backgroundColor: Colors.surface,
-      borderColor: Colors.coltsNavyLight,
-      borderWidth: 1,
+      backgroundColor: '#FFFFFF',
+      borderColor: Colors.midGray,
+      borderWidth: 1.5,
       justifyContent: 'center',
       alignItems: 'center',
     },
@@ -1042,7 +1053,7 @@ function createStyles(Colors: typeof LightColors) {
       fontFamily: Fonts.stats,
       fontSize: 9.5,
       fontWeight: 'bold',
-      color: '#ffffff',
+      color: Colors.obsidianBlack,
       letterSpacing: 0.5,
     },
     actionBtnTextDanger: {
@@ -1053,9 +1064,9 @@ function createStyles(Colors: typeof LightColors) {
       letterSpacing: 0.5,
     },
     addBtn: {
-      backgroundColor: 'rgba(255, 255, 255, 0.08)',
-      borderColor: 'rgba(255, 255, 255, 0.15)',
-      borderWidth: 1,
+      backgroundColor: Colors.pylonOrange,
+      borderColor: Colors.pylonOrange,
+      borderWidth: 1.5,
       borderRadius: 6,
       height: 28,
       paddingHorizontal: 12,
@@ -1071,23 +1082,23 @@ function createStyles(Colors: typeof LightColors) {
     },
     modalOverlay: {
       ...StyleSheet.absoluteFillObject,
-      backgroundColor: 'rgba(9, 9, 11, 0.85)',
+      backgroundColor: 'rgba(9, 9, 11, 0.4)',
       justifyContent: 'center',
       alignItems: 'center',
       padding: Spacing.four,
       zIndex: 1000,
     },
     modalContentCard: {
-      backgroundColor: '#18181b',
-      borderColor: '#27272a',
-      borderWidth: 1,
+      backgroundColor: '#FFFFFF',
+      borderColor: Colors.midGray,
+      borderWidth: 1.5,
       borderRadius: 12,
       padding: Spacing.four,
       width: '100%',
       maxWidth: 500,
       shadowColor: '#000000',
       shadowOffset: { width: 0, height: 10 },
-      shadowOpacity: 0.5,
+      shadowOpacity: 0.15,
       shadowRadius: 20,
       elevation: 10,
     },
@@ -1095,24 +1106,24 @@ function createStyles(Colors: typeof LightColors) {
       fontFamily: Fonts.headings,
       fontSize: 16,
       fontWeight: 'bold',
-      color: '#ffffff',
+      color: Colors.obsidianBlack,
       letterSpacing: 1,
       marginBottom: 8,
     },
     modalDesc: {
       fontFamily: Fonts.body,
       fontSize: 11,
-      color: '#a1a1aa',
+      color: 'rgba(12, 12, 12, 0.7)',
       lineHeight: 16,
       marginBottom: Spacing.three,
     },
     modalTextArea: {
-      backgroundColor: Colors.surfaceLifted,
-      borderColor: Colors.coltsNavyLight,
-      borderWidth: 1,
+      backgroundColor: Colors.primaryAccent,
+      borderColor: Colors.midGray,
+      borderWidth: 1.5,
       borderRadius: 8,
       padding: 12,
-      color: Colors.primaryAccent,
+      color: Colors.obsidianBlack,
       fontFamily: Fonts.stats,
       fontSize: 11,
       height: 160,
@@ -1130,20 +1141,20 @@ function createStyles(Colors: typeof LightColors) {
       paddingHorizontal: 16,
       justifyContent: 'center',
       alignItems: 'center',
-      backgroundColor: Colors.surfaceLifted,
-      borderColor: Colors.coltsNavyLight,
-      borderWidth: 1,
+      backgroundColor: Colors.primaryAccent,
+      borderColor: Colors.midGray,
+      borderWidth: 1.5,
     },
     modalBtnPrimary: {
-      backgroundColor: Colors.coltsNavy,
-      borderColor: Colors.coltsNavy,
+      backgroundColor: Colors.pylonOrange,
+      borderColor: Colors.pylonOrange,
       flex: 1,
     },
     modalBtnText: {
       fontFamily: Fonts.stats,
       fontSize: 10,
       fontWeight: 'bold',
-      color: Colors.secondaryAccent,
+      color: Colors.obsidianBlack,
     },
     modalBtnTextPrimary: {
       fontFamily: Fonts.stats,
@@ -1152,23 +1163,23 @@ function createStyles(Colors: typeof LightColors) {
       color: '#ffffff',
     },
     modalSingleLineInput: {
-      backgroundColor: Colors.surfaceLifted,
-      borderColor: Colors.coltsNavyLight,
-      borderWidth: 1,
+      backgroundColor: Colors.primaryAccent,
+      borderColor: Colors.midGray,
+      borderWidth: 1.5,
       borderRadius: 8,
       paddingHorizontal: 12,
       paddingVertical: 10,
-      color: Colors.primaryAccent,
+      color: Colors.obsidianBlack,
       fontFamily: Fonts.body,
       fontSize: 13,
       marginBottom: Spacing.four,
     },
     modalBtnDisabled: {
-      backgroundColor: '#27272a',
-      borderColor: '#27272a',
+      backgroundColor: '#e4e4e7',
+      borderColor: '#e4e4e7',
     },
     modalBtnTextDisabled: {
-      color: '#71717a',
+      color: '#a1a1aa',
     },
     byeCol: {
       width: 64,

@@ -14,7 +14,7 @@ export default function GradeCard({ grade, projectedWins, projectedLosses, playo
   const Colors = useColors();
   const theme = useThemeStore((state) => state.theme);
   const isDark = theme === 'dark';
-  const isHOF = grade === 'A+';
+  const isHOF = grade === '10';
   const activeStyles = isDark ? darkStyles : lightStyles;
 
   return (
@@ -24,17 +24,20 @@ export default function GradeCard({ grade, projectedWins, projectedLosses, playo
           <Text style={[activeStyles.gradeLetterText, isHOF && activeStyles.hofText]}>{grade}</Text>
         </View>
         <View style={activeStyles.gradeHeaderMeta}>
-          <Text style={activeStyles.gradeHeaderKicker}>{isHOF ? '🏆 HALL OF FAME RATING' : 'DRAFT GRADE'}</Text>
+          <Text style={activeStyles.gradeHeaderKicker}>{isHOF ? 'GEM MINT 10 RATING' : 'PSA GRADED DRAFT'}</Text>
           <Text style={activeStyles.gradeHeaderRecord}>{Math.round(projectedWins)} - {Math.round(projectedLosses)} Projected</Text>
           <Text style={activeStyles.gradeHeaderPlayoff}>{Math.round(playoffChance)}% Playoff Probability</Text>
         </View>
       </View>
       <Text style={activeStyles.gradeHeaderSummaryText}>
-        {grade === 'A+' && 'Masterful. You captured immense draft value across almost every single round.'}
-        {grade === 'A' && 'Outstanding. You navigated positional scarcity perfectly and built deep lineups.'}
-        {grade.startsWith('B') && 'Strong draft. Solid roster balance with very minor ADP slips.'}
-        {grade === 'C' && 'Average draft. Reached on several positions; depth could be highly vulnerable.'}
-        {grade === 'D' && 'Tough draft board. We recommend monitoring active news to adjust starters.'}
+        {grade === '10' && 'GEM MT 10: Masterful. You captured immense draft value across almost every single round.'}
+        {grade === '9' && 'MINT 9: Outstanding. You navigated positional scarcity perfectly and built deep lineups.'}
+        {grade === '8' && 'NM-MT 8: Strong draft. Solid roster balance with very minor ADP slips.'}
+        {grade === '7' && 'NM 7: Solid draft board. Good team depth and well-distributed bye weeks.'}
+        {grade === '6' && 'EX-MT 6: Average draft. Reached on several positions; depth could be highly vulnerable.'}
+        {grade === '5' && 'EX 5: Average draft. Reached on several positions; depth could be highly vulnerable.'}
+        {['4', '3', '2', '1'].includes(grade) && 'VG-EX 4: Tough draft board. We recommend monitoring waiver wires and active news.'}
+        {!['10', '9', '8', '7', '6', '5', '4', '3', '2', '1'].includes(grade) && 'Strong draft. Solid roster balance with very minor ADP slips.'}
       </Text>
     </View>
   );
@@ -44,8 +47,8 @@ function createStyles(Colors: typeof LightColors) {
   const isDark = (Colors.primaryAccent as string) === '#FFFFFF';
   return StyleSheet.create({
     gradeCard: {
-      backgroundColor: Colors.surface,
-      borderColor: Colors.coltsNavyLight,
+      backgroundColor: Colors.deepGraphiteCharcoal,
+      borderColor: Colors.chromeSilver,
       borderWidth: 1,
       borderRadius: 12,
       padding: Spacing.three,
@@ -55,7 +58,7 @@ function createStyles(Colors: typeof LightColors) {
     hofGradeCard: {
       borderColor: Colors.hofYellow,
       borderWidth: 2,
-      backgroundColor: Colors.surface,
+      backgroundColor: Colors.deepGraphiteCharcoal,
       shadowColor: Colors.hofYellow,
       shadowOffset: { width: 0, height: 4 },
       shadowOpacity: 0.2,
@@ -70,8 +73,8 @@ function createStyles(Colors: typeof LightColors) {
       width: 60,
       height: 60,
       borderRadius: 30,
-      backgroundColor: Colors.surfaceLifted,
-      borderColor: Colors.coltsNavyLight,
+      backgroundColor: Colors.liftedCharcoal,
+      borderColor: Colors.chromeSilver,
       borderWidth: 1,
       justifyContent: 'center',
       alignItems: 'center',

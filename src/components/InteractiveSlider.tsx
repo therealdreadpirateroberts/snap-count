@@ -1,7 +1,8 @@
 import React, { useState, useRef } from 'react';
 import { StyleSheet, View, Text, PanResponder, Animated, Platform } from 'react-native';
 import * as Haptics from 'expo-haptics';
-import { Fonts } from '@/constants/theme';
+import { Fonts, useColors, LightColors, DarkColors } from '@/constants/theme';
+import { useThemeStore } from '@/store/useThemeStore';
 
 // Mock Spacing constants for safety if theme.ts doesn't export them
 const Spacing = {
@@ -162,105 +163,116 @@ export default function InteractiveSlider({
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    width: '100%',
-    paddingVertical: Spacing.one,
-  },
-  sliderHarness: {
-    height: 36,
-    width: '100%',
-    justifyContent: 'center',
-    position: 'relative',
-    ...Platform.select({
-      web: { cursor: 'pointer' },
-      default: {},
-    }),
-  },
-  inactiveTrack: {
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: '#9EA7B0',
-    opacity: 0.3,
-    width: '100%',
-    position: 'absolute',
-  },
-  filledTrack: {
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: '#FFC107', // Penalty-Flag Yellow
-    position: 'absolute',
-  },
-  handle: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    backgroundColor: '#F4F5F7', // Chalk White
-    borderWidth: 1.5,
-    borderColor: '#9EA7B0', // Chrome Silver
-    position: 'absolute',
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.5,
-    elevation: 3,
-  },
-  handleCore: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: '#9EA7B0',
-  },
-  glowOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    borderRadius: 11,
-    borderWidth: 3,
-    borderColor: 'rgba(255, 193, 7, 0.4)', // soft yellow glow on drag
-    backgroundColor: 'transparent',
-  },
-  floatingLabel: {
-    position: 'absolute',
-    top: -26,
-    backgroundColor: '#F4F5F7', // Chalk White
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: '#9EA7B0',
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 2,
-    elevation: 2,
-    minWidth: 44,
-  },
-  floatingLabelText: {
-    fontFamily: Fonts.stats,
-    fontSize: 10,
-    fontWeight: 'bold',
-    color: '#000000', // solid black text
-  },
-  labelRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginTop: 8,
-    paddingHorizontal: 4,
-  },
-  minMaxText: {
-    fontFamily: Fonts.stats,
-    fontSize: 10,
-    color: '#9EA7B0',
-    fontWeight: '600',
-  },
-  currentValueText: {
-    fontFamily: Fonts.body,
-    fontSize: 11,
-    color: '#F4F5F7',
-    fontWeight: 'bold',
-  },
-});
+function createStyles(Colors: typeof LightColors) {
+  return StyleSheet.create({
+    container: {
+      width: '100%',
+      paddingVertical: Spacing.one,
+    },
+    sliderHarness: {
+      height: 36,
+      width: '100%',
+      justifyContent: 'center',
+      position: 'relative',
+      ...Platform.select({
+        web: { cursor: 'pointer' },
+        default: {},
+      }),
+    },
+    inactiveTrack: {
+      height: 6,
+      borderRadius: 3,
+      backgroundColor: Colors.midGray,
+      opacity: 0.3,
+      width: '100%',
+      position: 'absolute',
+    },
+    filledTrack: {
+      height: 6,
+      borderRadius: 3,
+      backgroundColor: Colors.hofYellow,
+      position: 'absolute',
+    },
+    handle: {
+      width: 22,
+      height: 22,
+      borderRadius: 11,
+      backgroundColor: Colors.primaryAccent,
+      borderWidth: 1.5,
+      borderColor: Colors.midGray,
+      position: 'absolute',
+      justifyContent: 'center',
+      alignItems: 'center',
+      shadowColor: '#000000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.25,
+      shadowRadius: 3.5,
+      elevation: 3,
+    },
+    handleCore: {
+      width: 6,
+      height: 6,
+      borderRadius: 3,
+      backgroundColor: Colors.midGray,
+    },
+    glowOverlay: {
+      ...StyleSheet.absoluteFillObject,
+      borderRadius: 11,
+      borderWidth: 3,
+      borderColor: 'rgba(255, 205, 0, 0.4)', // soft yellow glow on drag
+      backgroundColor: 'transparent',
+    },
+    floatingLabel: {
+      position: 'absolute',
+      top: -26,
+      backgroundColor: Colors.primaryAccent,
+      paddingHorizontal: 8,
+      paddingVertical: 3,
+      borderRadius: 10,
+      borderWidth: 1,
+      borderColor: Colors.midGray,
+      justifyContent: 'center',
+      alignItems: 'center',
+      shadowColor: '#000000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.15,
+      shadowRadius: 2,
+      elevation: 2,
+      minWidth: 44,
+    },
+    floatingLabelText: {
+      fontFamily: Fonts.stats,
+      fontSize: 10,
+      fontWeight: 'bold',
+      color: Colors.obsidianBlack,
+    },
+    labelRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginTop: 8,
+      paddingHorizontal: 4,
+    },
+    minMaxText: {
+      fontFamily: Fonts.stats,
+      fontSize: 10,
+      color: Colors.slate,
+      fontWeight: '600',
+    },
+    currentValueText: {
+      fontFamily: Fonts.body,
+      fontSize: 11,
+      color: Colors.obsidianBlack,
+      fontWeight: 'bold',
+    },
+  });
+}
+
+const lightStyles = createStyles(LightColors);
+const darkStyles = createStyles(DarkColors as any);
+const styles = new Proxy({}, {
+  get(target, prop) {
+    const theme = useThemeStore.getState().theme;
+    return theme === 'dark' ? darkStyles[prop as keyof typeof darkStyles] : lightStyles[prop as keyof typeof lightStyles];
+  }
+}) as ReturnType<typeof createStyles>;

@@ -25,7 +25,7 @@ describe('useAuthSync hook', () => {
     useAuthStore.setState({
       user: {
         id: 'user_123',
-        email: 'brad@mockmaxxing.com',
+        email: 'lou.bradstafford@gmail.com',
         name: '@Brad_Drafter',
         firstName: 'Brad',
         avatarUrl: '👑',

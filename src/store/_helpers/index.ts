@@ -1,6 +1,5 @@
 import { useAuthStore } from '../useAuthStore';
 import { Player, generateMockRankings, ESPN_ID_MAPPING } from '../mockData';
-import liveMetricsData from '../../../scratch_live_metrics.json';
 import { DraftPick, BotProfile, HistoricalDraft, DraftSetup } from '../types';
 
 export const getUserTeamName = (): string => {
@@ -560,6 +559,110 @@ export const BOT_OPTIMIZED_PARAMS = {
   }
 };
 
+// Module-level mutable runtime reference
+let runtimeBotParams = JSON.parse(JSON.stringify(BOT_OPTIMIZED_PARAMS));
+
+// Save debounce timer
+let saveTimeout: any = null;
+
+export const saveBotParamsNow = () => {
+  if (typeof window === 'undefined' || !window.localStorage) return;
+  if (saveTimeout) {
+    clearTimeout(saveTimeout);
+    saveTimeout = null;
+  }
+  try {
+    window.localStorage.setItem('mockmaxxing_mutated_bot_params', JSON.stringify(runtimeBotParams));
+    console.log('💾 mockmaxxing: Bot parameters successfully saved to localStorage.');
+  } catch (e) {
+    console.error('❌ mockmaxxing: Failed to save bot parameters to localStorage', e);
+  }
+};
+
+export const triggerDebouncedSave = () => {
+  if (typeof window === 'undefined' || !window.localStorage) return;
+  if (saveTimeout) {
+    clearTimeout(saveTimeout);
+  }
+  saveTimeout = setTimeout(() => {
+    saveBotParamsNow();
+  }, 8000); // 8-second debounce window (Decision 9D)
+};
+
+export const updateBotParams = (newParams: any) => {
+  const factoryDefaults = BOT_OPTIMIZED_PARAMS;
+  const bounded: any = {};
+
+  for (const camp in factoryDefaults) {
+    bounded[camp] = {};
+    const defaultCamp = (factoryDefaults as any)[camp];
+    const newCamp = newParams[camp] || {};
+
+    for (const param in defaultCamp) {
+      const defaultValue = defaultCamp[param];
+      let newValue = newCamp[param];
+
+      if (typeof newValue !== 'number' || isNaN(newValue)) {
+        newValue = defaultValue;
+      }
+
+      // Strict bounds checking: limits deviation to ±30% from factory baseline (Decision 10D)
+      const deviation = Math.abs(defaultValue) * 0.3;
+      const minVal = defaultValue - deviation;
+      const maxVal = defaultValue + deviation;
+
+      const boundedValue = Math.min(Math.max(newValue, minVal), maxVal);
+      bounded[camp][param] = Number(boundedValue.toFixed(2));
+    }
+  }
+
+  runtimeBotParams = bounded;
+  triggerDebouncedSave();
+};
+
+export const getCurrentBotParams = () => {
+  return JSON.parse(JSON.stringify(runtimeBotParams));
+};
+
+export const hydrateBotParams = () => {
+  if (typeof window !== 'undefined' && window.localStorage) {
+    try {
+      const stored = window.localStorage.getItem('mockmaxxing_mutated_bot_params');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        updateBotParams(parsed);
+        console.log('✅ mockmaxxing: Bot parameters successfully hydrated from localStorage');
+        return;
+      }
+    } catch (e) {
+      console.error('❌ mockmaxxing: Failed to hydrate bot parameters', e);
+    }
+  }
+  runtimeBotParams = JSON.parse(JSON.stringify(BOT_OPTIMIZED_PARAMS));
+  console.log('ℹ️ mockmaxxing: Bot parameters initialized with factory defaults');
+};
+
+export const resetBotIntelligence = () => {
+  if (typeof window !== 'undefined' && window.localStorage) {
+    try {
+      window.localStorage.removeItem('mockmaxxing_mutated_bot_params');
+      window.localStorage.removeItem('mockmaxxing_last_bot_training');
+      console.log('🧹 mockmaxxing: Bot intelligence and training logs wiped from localStorage.');
+    } catch (e) {
+      console.error('❌ mockmaxxing: Failed to clear localStorage key', e);
+    }
+  }
+  runtimeBotParams = JSON.parse(JSON.stringify(BOT_OPTIMIZED_PARAMS));
+  if (saveTimeout) {
+    clearTimeout(saveTimeout);
+    saveTimeout = null;
+  }
+  console.log('🔄 mockmaxxing: Bot parameters reset to factory defaults.');
+};
+
+// Synchronous deterministic hydration at module initialization (Decision 8D)
+hydrateBotParams();
+
 export const DEFAULT_BOT_PROFILES: { [name: string]: BotProfile } = {
   'Andy': { name: 'Andy', strategyCamp: 'Balanced', expertPreference: 'Andy', learningAccuracy: 0.96 },
   'Mike': { name: 'Mike', strategyCamp: 'Hero RB', expertPreference: 'Mike', learningAccuracy: 0.96 },
@@ -651,13 +754,13 @@ export const calculateCpuPlayerScore = (
   const valueStealMitigation = valueGap > 10 ? Math.min(50, valueGap * 3.0) : 0;
 
   if (camp === 'Zero RB') {
-    const params = BOT_OPTIMIZED_PARAMS['Zero RB'];
+    const params = runtimeBotParams['Zero RB'];
     if (currentRound <= params.roundLimit) {
       if (pos === 'RB') score += Math.min(0, params.earlyRoundRB_penalty + valueStealMitigation);
       if (pos === 'WR' || pos === 'TE') score += params.earlyRoundWRTE_bonus;
     }
   } else if (camp === 'Hero RB') {
-    const params = BOT_OPTIMIZED_PARAMS['Hero RB'];
+    const params = runtimeBotParams['Hero RB'];
     if (pos === 'RB') {
       if (currentRound <= params.roundLimitAnchor) {
         if (roster.RB === 0) score += params.anchorRB_bonus;
@@ -666,25 +769,25 @@ export const calculateCpuPlayerScore = (
       }
     }
   } else if (camp === 'Late QB/TE Focus') {
-    const params = BOT_OPTIMIZED_PARAMS['Late QB/TE Focus'];
+    const params = runtimeBotParams['Late QB/TE Focus'];
     if (currentRound < params.roundLimit) {
       if (pos === 'QB') score += Math.min(0, params.earlyQB_penalty + valueStealMitigation);
       if (pos === 'TE') score += Math.min(0, params.earlyTE_penalty + valueStealMitigation);
     }
   } else if (camp === 'Balanced') {
-    const params = BOT_OPTIMIZED_PARAMS['Balanced'];
+    const params = runtimeBotParams['Balanced'];
     const gap = currentPick - player.adp;
     if (gap > params.adpGapThreshold) {
       score += Math.min(params.adpSteal_cap, gap * params.adpSteal_multiplier);
     }
   } else if (camp === 'Robust RB') {
-    const params = BOT_OPTIMIZED_PARAMS['Robust RB'];
+    const params = runtimeBotParams['Robust RB'];
     if (currentRound <= params.roundLimit) {
       if (pos === 'RB') score += params.earlyRB_bonus;
       if (pos === 'QB' || pos === 'TE' || pos === 'WR') score += Math.min(0, params.earlyQBTEWR_penalty + valueStealMitigation);
     }
   } else if (camp === 'Elite QB/TE Premium') {
-    const params = BOT_OPTIMIZED_PARAMS['Elite QB/TE Premium'];
+    const params = runtimeBotParams['Elite QB/TE Premium'];
     if (currentRound <= params.roundLimit) {
       if (pos === 'QB' && roster.QB === 0) score += params.earlyQB_bonus;
       if (pos === 'TE' && roster.TE === 0) score += params.earlyTE_bonus;
@@ -841,7 +944,10 @@ export const runFastSimulation = (
   preSortedPlayers?: Player[],
   customUserTeamName?: string
 ): HistoricalDraft => {
-  const players = preSortedPlayers || applyFormatAndSort(generateMockRankings(), setup.leagueFormat, setup.rankingsBase, myRanks);
+  const basePlayers = preSortedPlayers || applyFormatAndSort(generateMockRankings(), setup.leagueFormat, setup.rankingsBase, myRanks);
+  
+  // Surgical deep-cloning of player objects at entry point to isolate reference mutations (Decision 1 & 3 Option A)
+  const players = basePlayers.map(p => ({ ...p }));
   
   // Reset draftedBy directly to avoid mapping allocation overhead
   for (let i = 0; i < players.length; i++) {
@@ -1101,7 +1207,7 @@ export const runFastSimulation = (
   const avgWins = Array(setup.leagueSize).fill(0);
   const avgLosses = Array(setup.leagueSize).fill(0);
   const playoffChances = Array(setup.leagueSize).fill(0);
-  const grades = Array(setup.leagueSize).fill('B');
+  const grades = Array(setup.leagueSize).fill('8');
   
   for (let i = 0; i < setup.leagueSize; i++) {
     const w = wins[i] / simCount;
@@ -1109,12 +1215,13 @@ export const runFastSimulation = (
     avgLosses[i] = Number((numWeeks - w).toFixed(1));
     playoffChances[i] = Math.round((playoffCounts[i] / simCount) * 100);
     
-    if (w >= 10.0) grades[i] = 'A+';
-    else if (w >= 9.0) grades[i] = 'A';
-    else if (w >= 8.0) grades[i] = 'B+';
-    else if (w >= 7.0) grades[i] = 'B';
-    else if (w >= 6.0) grades[i] = 'C';
-    else grades[i] = 'D';
+    if (w >= 10.0) grades[i] = '10';
+    else if (w >= 9.0) grades[i] = '9';
+    else if (w >= 8.0) grades[i] = '8';
+    else if (w >= 7.0) grades[i] = '7';
+    else if (w >= 6.0) grades[i] = '6';
+    else if (w >= 5.0) grades[i] = '5';
+    else grades[i] = '4';
   }
   
   const valueScores = Array(setup.leagueSize).fill(0);
@@ -1152,15 +1259,23 @@ export const runFastSimulation = (
       wins: avgWins[idx],
       losses: avgLosses[idx],
       playoffChance: playoffChances[idx],
-      roster: teamRosterPlayers[idx].map(p => ({
-        name: p.name,
-        position: p.position,
-        rank: p.rank,
-        adp: p.adp,
-        projectedPoints: p.projectedPoints,
-        espnId: p.espnId,
-        bye: p.bye
-      }))
+      roster: teamRosterPlayers[idx].map(p => {
+        const pickObj = draftHistory.find(h => h.player.name === p.name);
+        const pickInRound = pickObj ? (pickObj.pickNumber - (pickObj.round - 1) * setup.leagueSize) : 1;
+        const formattedPick = `${pickObj ? pickObj.round : 1}.${String(pickInRound).padStart(2, '0')}`;
+        return {
+          name: p.name,
+          position: p.position,
+          team: p.team || 'FA',
+          rank: p.rank,
+          adp: p.adp,
+          projectedPoints: p.projectedPoints,
+          espnId: p.espnId,
+          bye: p.bye,
+          pick: formattedPick,
+          round: pickObj ? pickObj.round : 1
+        };
+      })
     };
   });
   
@@ -1170,7 +1285,7 @@ export const runFastSimulation = (
   return {
     id: `draft_${Date.now()}_${Math.floor(Math.random() * 100000)}`,
     timestamp: Date.now(),
-    grade: userRecord ? userRecord.grade : 'B',
+    grade: userRecord ? userRecord.grade : '8',
     valueScore: userIdx !== -1 ? valueScores[userIdx] : 0,
     playoffChance: userRecord ? userRecord.playoffChance : 50,
     projectedWins: userRecord ? userRecord.wins : 7,

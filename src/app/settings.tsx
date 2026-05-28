@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, View, Text, Pressable, ScrollView, Platform, Switch } from 'react-native';
+import { StyleSheet, View, Text, Pressable, ScrollView, Platform, Switch, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useColors, Fonts, Spacing, MaxContentWidth } from '@/constants/theme';
@@ -13,8 +13,36 @@ import EditProfileModal from '@/components/EditProfileModal';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import * as Haptics from 'expo-haptics';
 import Svg, { Path } from 'react-native-svg';
+import { resetBotIntelligence } from '@/store/_helpers';
+import { ADMIN_ALLOWLIST } from '@/constants/admin';
 
 const INITIAL_FEATURES: AppFeature[] = [
+  {
+    id: '7',
+    version: 'v2.6.0',
+    date: 'May 2026',
+    category: 'DESIGN SYSTEM',
+    title: 'Premium Sleeper-Style Player Cards',
+    description: 'Tap on any player inside Consensus Rankings or your Custom Cheat Sheet to expand a premium sports-terminal dark player card modal. Features monospaced season stats formulas and active store news lookup triggers.',
+    iconType: 'palette',
+    actionText: 'LAUNCH CHEAT SHEETS',
+    routePath: '/rankings',
+    likes: 312,
+    hasLiked: false,
+  },
+  {
+    id: '8',
+    version: 'v2.5.5',
+    date: 'May 2026',
+    category: 'CORE ENGINE',
+    title: 'Draft Grid Flooding & Touch Gestures',
+    description: 'Drafted tiles now flood with premium position-specific colors and high-contrast lettering. User active-pick cells animate with sleek breathing pulses and a "MAKE YOUR PICK" trigger that automatically expands the suggestion sheet.',
+    iconType: 'refresh',
+    actionText: 'OPEN ACTIVE DRAFT',
+    routePath: '/wizard/active',
+    likes: 245,
+    hasLiked: false,
+  },
   {
     id: '1',
     version: 'v2.5.0',
@@ -115,6 +143,53 @@ function SettingsScreenContent() {
     }
   }, [tab]);
 
+  const [lastTraining, setLastTraining] = useState<string>('Never');
+
+  useEffect(() => {
+    if (typeof window !== 'undefined' && window.localStorage) {
+      const val = window.localStorage.getItem('mockmaxxing_last_bot_training');
+      if (val) {
+        try {
+          const date = new Date(val);
+          setLastTraining(date.toLocaleString());
+        } catch (e) {
+          setLastTraining('Never');
+        }
+      } else {
+        setLastTraining('Never');
+      }
+    }
+  }, []);
+
+  const handleResetBotIntelligence = () => {
+    if (Platform.OS === 'web') {
+      const confirmReset = window.confirm("Are you sure you want to wipe all bot strategy parameter mutations and restore factory default parameters?");
+      if (confirmReset) {
+        resetBotIntelligence();
+        setLastTraining('Never');
+        window.alert("Bot parameters reset to factory defaults.");
+      }
+    } else {
+      Alert.alert(
+        "Reset Bot Intelligence",
+        "Are you sure you want to wipe all bot strategy parameter mutations and restore factory default parameters?",
+        [
+          { text: "Cancel", style: "cancel" },
+          { 
+            text: "Reset", 
+            style: "destructive", 
+            onPress: () => {
+              triggerHaptic(Haptics.ImpactFeedbackStyle.Heavy);
+              resetBotIntelligence();
+              setLastTraining('Never');
+              Alert.alert("Success", "Bot parameters reset to factory defaults.");
+            } 
+          }
+        ]
+      );
+    }
+  };
+
   const triggerHaptic = async (style = Haptics.ImpactFeedbackStyle.Light) => {
     if (Platform.OS !== 'web') {
       try {
@@ -176,7 +251,7 @@ function SettingsScreenContent() {
       <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
         
         <AppHeader
-          title={activeTab === 'settings' ? "COACH PROFILE" : "INBOX"}
+          title={activeTab === 'settings' ? "ACCOUNT" : "INBOX"}
           subtitle={activeTab === 'settings' ? "Manage your profile & preferences" : "Latest updates & feature logs"}
           showBack={true}
           backText="BACK"
@@ -205,7 +280,7 @@ function SettingsScreenContent() {
                   <Text style={styles.profileCoachName}>{user?.name || '@Drafter'}</Text>
                   <Text style={styles.profileCoachEmail}>{user?.email || 'coach@mockmaxxing.com'}</Text>
                   {user?.phoneNumber ? (
-                    <Text style={styles.profileCoachPhone}>📱 {user.phoneNumber}</Text>
+                    <Text style={styles.profileCoachPhone}>{user.phoneNumber}</Text>
                   ) : null}
                 </View>
               </View>
@@ -338,27 +413,24 @@ function SettingsScreenContent() {
                 )}
               </View>
 
-              {/* EXECUTIVE DASHBOARD FOR CEO */}
-              {(user?.firstName?.toLowerCase() === 'brad' ||
-                user?.name?.toLowerCase().includes('brad') ||
-                user?.email?.toLowerCase().includes('brad') ||
-                user?.email === 'lou.bradstafford@gmail.com') && (
+              {/* ALGO CONTROL PANEL FOR ADMINS */}
+              {user && ADMIN_ALLOWLIST.includes(user.email) && (
                 <View style={styles.settingsSection}>
-                  <Text style={styles.settingsSectionHeader}>EXECUTIVE CONTROL PANEL</Text>
+                  <Text style={styles.settingsSectionHeader}>ALGO CONTROL PANEL</Text>
                   
                   <Pressable 
                     style={({ pressed }) => [styles.settingsRow, pressed && styles.settingsRowPressed]}
                     onPress={() => {
                       triggerHaptic(Haptics.ImpactFeedbackStyle.Medium);
-                      router.push('/executive-dashboard');
+                      router.push('/algo-admin');
                     }}
                   >
                     <View style={styles.settingsRowLeft}>
                       <Text style={styles.settingsRowTitle}>
-                        Executive IT Dashboard
+                        Algo Admin
                       </Text>
                       <Text style={styles.settingsRowSubtitle}>
-                        Pin Slot 1 promoted tile, cap homepage feed, and oversee simulation lab
+                        Start training sessions, inspect parameters, and reset bot intelligence
                       </Text>
                     </View>
                     <Svg width={18} height={18} viewBox="0 0 24 24" fill="none">
@@ -367,6 +439,69 @@ function SettingsScreenContent() {
                   </Pressable>
                 </View>
               )}
+
+              {/* SECTION 2.75: BOT INTELLIGENCE & PARAMETERS (Decision 10D, 11D & 12D) */}
+              <View style={styles.settingsSection}>
+                <Text style={styles.settingsSectionHeader}>BOT INTELLIGENCE & PARAMETERS</Text>
+                
+                <View style={styles.settingsSwitchRow}>
+                  <View style={styles.settingsRowLeft}>
+                    <Text style={styles.settingsRowTitle}>Evolving Bot Parameters</Text>
+                    <Text style={styles.settingsRowSubtitle}>
+                      Bots are hand-tuned with realistic strategy archetypes. Run training sessions to evolve their parameters over time.
+                    </Text>
+                  </View>
+                </View>
+
+                {user && ADMIN_ALLOWLIST.includes(user.email) && (
+                  <View style={styles.settingsSwitchRow}>
+                    <View style={styles.settingsRowLeft}>
+                      <Text style={styles.settingsRowTitle}>Last Bot Training Session</Text>
+                      <Text style={styles.settingsRowSubtitle}>
+                        Timestamp: {lastTraining}
+                      </Text>
+                    </View>
+                    <Pressable
+                      style={({ pressed }) => [
+                        {
+                          paddingHorizontal: 12,
+                          paddingVertical: 6,
+                          backgroundColor: Colors.hofYellow,
+                          borderRadius: 6,
+                          minHeight: 32,
+                          justifyContent: 'center',
+                        },
+                        pressed && styles.btnPressed
+                      ]}
+                      onPress={() => {
+                        triggerHaptic(Haptics.ImpactFeedbackStyle.Medium);
+                        router.push('/algo-admin');
+                      }}
+                    >
+                      <Text style={{ fontFamily: Fonts.headings, fontSize: 10, fontWeight: 'bold', color: Colors.obsidianBlack }}>
+                        ALGO ADMIN
+                      </Text>
+                    </Pressable>
+                  </View>
+                )}
+
+                <Pressable 
+                  style={({ pressed }) => [styles.settingsRow, pressed && styles.settingsRowPressed]}
+                  onPress={handleResetBotIntelligence}
+                >
+                  <View style={styles.settingsRowLeft}>
+                    <Text style={[styles.settingsRowTitle, { color: Colors.pylonOrange || '#FF5722' }]}>
+                      Reset Bot Intelligence
+                    </Text>
+                    <Text style={styles.settingsRowSubtitle}>
+                      Wipe all custom mutations and restore factory default parameters
+                    </Text>
+                  </View>
+                  <Svg width={18} height={18} viewBox="0 0 24 24" fill="none">
+                    <Path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6-1.41-1.41z" fill={Colors.pylonOrange || '#FF5722'} />
+                  </Svg>
+                </Pressable>
+              </View>
 
               {/* SECTION 3: THEME PREFERENCES */}
               <View style={styles.settingsSection}>
@@ -415,7 +550,7 @@ function createStyles(Colors: typeof import('@/constants/theme').LightColors) {
   return StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: Colors.background,
+      backgroundColor: Colors.primaryAccent,
     },
     safeArea: {
       flex: 1,
@@ -435,9 +570,9 @@ function createStyles(Colors: typeof import('@/constants/theme').LightColors) {
       gap: Spacing.four,
     },
     profileSummaryCard: {
-      backgroundColor: Colors.surface,
-      borderColor: Colors.coltsNavyLight,
-      borderWidth: 1,
+      backgroundColor: Colors.primaryAccent,
+      borderColor: Colors.midGray,
+      borderWidth: 1.5,
       borderRadius: 12,
       padding: Spacing.four,
       flexDirection: 'row',
@@ -450,15 +585,17 @@ function createStyles(Colors: typeof import('@/constants/theme').LightColors) {
       width: 48,
       height: 48,
       borderRadius: 24,
-      backgroundColor: Colors.coltsNavy,
+      backgroundColor: Colors.liftedCanvas,
       justifyContent: 'center',
       alignItems: 'center',
+      borderWidth: 1.5,
+      borderColor: Colors.midGray,
     },
     profileInitialsText: {
       fontFamily: Fonts.headings,
       fontSize: 18,
       fontWeight: 'bold',
-      color: '#FFFFFF',
+      color: Colors.obsidianBlack,
     },
     profileDetailsBlock: {
       flex: 1,
@@ -468,7 +605,7 @@ function createStyles(Colors: typeof import('@/constants/theme').LightColors) {
       fontFamily: Fonts.headings,
       fontSize: 16,
       fontWeight: 'bold',
-      color: Colors.primaryAccent,
+      color: Colors.obsidianBlack,
     },
     profileCoachEmail: {
       fontFamily: Fonts.body,
@@ -491,7 +628,7 @@ function createStyles(Colors: typeof import('@/constants/theme').LightColors) {
       fontFamily: Fonts.stats,
       fontSize: 9,
       fontWeight: '900',
-      color: Colors.coltsNavy,
+      color: Colors.obsidianBlack,
       letterSpacing: 1.5,
       paddingLeft: 4,
     },
@@ -499,24 +636,24 @@ function createStyles(Colors: typeof import('@/constants/theme').LightColors) {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
-      backgroundColor: Colors.surface,
-      borderColor: Colors.coltsNavyLight,
-      borderWidth: 1,
+      backgroundColor: Colors.primaryAccent,
+      borderColor: Colors.midGray,
+      borderWidth: 1.5,
       borderRadius: 10,
       paddingVertical: Spacing.three,
       paddingHorizontal: Spacing.three,
       minHeight: 52, // HIG Touch Target
     },
     settingsRowPressed: {
-      backgroundColor: Colors.surfaceLifted,
+      backgroundColor: Colors.liftedCanvas,
     },
     settingsSwitchRow: {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
-      backgroundColor: Colors.surface,
-      borderColor: Colors.coltsNavyLight,
-      borderWidth: 1,
+      backgroundColor: Colors.primaryAccent,
+      borderColor: Colors.midGray,
+      borderWidth: 1.5,
       borderRadius: 10,
       paddingVertical: Spacing.three,
       paddingHorizontal: Spacing.three,
@@ -531,7 +668,7 @@ function createStyles(Colors: typeof import('@/constants/theme').LightColors) {
       fontFamily: Fonts.headings,
       fontSize: 13,
       fontWeight: 'bold',
-      color: Colors.primaryAccent,
+      color: Colors.obsidianBlack,
     },
     settingsRowSubtitle: {
       fontFamily: Fonts.body,
@@ -540,9 +677,9 @@ function createStyles(Colors: typeof import('@/constants/theme').LightColors) {
       opacity: 0.8,
     },
     strategyExpandableContainer: {
-      backgroundColor: Colors.surfaceLifted,
-      borderColor: Colors.coltsNavyLight,
-      borderWidth: 0.5,
+      backgroundColor: Colors.liftedCanvas,
+      borderColor: Colors.midGray,
+      borderWidth: 1.5,
       borderRadius: 10,
       padding: Spacing.three,
       gap: Spacing.two,
@@ -564,27 +701,27 @@ function createStyles(Colors: typeof import('@/constants/theme').LightColors) {
     strategyCapsuleChip: {
       paddingHorizontal: Spacing.three,
       paddingVertical: 8,
-      backgroundColor: Colors.surface,
-      borderColor: Colors.coltsNavyLight,
-      borderWidth: 1,
+      backgroundColor: Colors.primaryAccent,
+      borderColor: Colors.midGray,
+      borderWidth: 1.5,
       borderRadius: 18,
       justifyContent: 'center',
       alignItems: 'center',
       minHeight: 36,
     },
     strategyCapsuleChipActive: {
-      backgroundColor: Colors.coltsNavy,
-      borderColor: Colors.coltsNavy,
-      borderWidth: 1,
+      backgroundColor: Colors.obsidianBlack,
+      borderColor: Colors.obsidianBlack,
+      borderWidth: 1.5,
     },
     strategyCapsuleText: {
       fontFamily: Fonts.headings,
       fontSize: 10,
-      color: Colors.secondaryAccent,
+      color: Colors.slate,
       fontWeight: 'bold',
     },
     strategyCapsuleTextActive: {
-      color: '#ffffff',
+      color: Colors.primaryAccent,
     },
     btnPressed: {
       opacity: 0.7,

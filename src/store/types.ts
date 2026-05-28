@@ -24,6 +24,7 @@ export interface HistoricalDraft {
   projectedWins: number;
   projectedLosses: number;
   userPosition: number;
+  isManual?: boolean; // <-- Add isManual flag to identify user-completed drafts
   leagueSize: number;
   opponentStyle: string;
   leagueFormat: string;
@@ -44,11 +45,14 @@ export interface HistoricalDraft {
     roster: {
       name: string;
       position: string;
+      team: string;
       rank: number;
       adp: number;
       projectedPoints: number;
       espnId: number | null;
       bye: number;
+      pick?: string;
+      round?: number;
     }[];
   }[];
 }
@@ -77,4 +81,5 @@ export interface DraftSetup {
     BENCH: number;
     IR: number;
   };
+  year?: number;
 }

@@ -45,7 +45,7 @@ export const SEEDED_NEWS_STORIES: NewsStoryItem[] = [
   {
     id: 'studio-news-2',
     tag: 'CAMP',
-    tagColor: '#bea98e',
+    tagColor: '#6B3615',
     timeAgo: '45m ago',
     timestamp: Date.now() - 45 * 60 * 1000,
     headline: 'Justin Jefferson signs massive contract extension, reports to Vikings facilities immediately',
@@ -93,7 +93,7 @@ export const SEEDED_NEWS_STORIES: NewsStoryItem[] = [
   {
     id: 'studio-news-5',
     tag: 'CAMP',
-    tagColor: '#bea98e',
+    tagColor: '#6B3615',
     timeAgo: '6h ago',
     timestamp: Date.now() - 6 * 60 * 60 * 1000,
     headline: 'Sam LaPorta showing elite target shares in Lions redzone packages',
@@ -125,7 +125,7 @@ export const SEEDED_NEWS_STORIES: NewsStoryItem[] = [
   {
     id: 'studio-news-7',
     tag: 'CAMP',
-    tagColor: '#bea98e',
+    tagColor: '#6B3615',
     timeAgo: '12h ago',
     timestamp: Date.now() - 12 * 60 * 60 * 1000,
     headline: 'Breece Hall flashes elite explosiveness, makes full recovery from knee soreness',
@@ -173,7 +173,7 @@ export const SEEDED_NEWS_STORIES: NewsStoryItem[] = [
   {
     id: 'studio-news-10',
     tag: 'CAMP',
-    tagColor: '#bea98e',
+    tagColor: '#6B3615',
     timeAgo: '1d ago',
     timestamp: Date.now() - 28 * 60 * 60 * 1000,
     headline: 'Tyreek Hill dominates speed drills, looks fully primed for another 1,700-yard push',
@@ -205,7 +205,7 @@ export const SEEDED_NEWS_STORIES: NewsStoryItem[] = [
   {
     id: 'studio-news-12',
     tag: 'CAMP',
-    tagColor: '#bea98e',
+    tagColor: '#6B3615',
     timeAgo: '2d ago',
     timestamp: Date.now() - 48 * 60 * 60 * 1000,
     headline: 'Amon-Ra St. Brown showcases unmatched target volume, catching 15 straight in camp scrimmage',
@@ -221,7 +221,7 @@ export const SEEDED_NEWS_STORIES: NewsStoryItem[] = [
   {
     id: 'studio-news-13',
     tag: 'CAMP',
-    tagColor: '#bea98e',
+    tagColor: '#6B3615',
     timeAgo: '2d ago',
     timestamp: Date.now() - 52 * 60 * 60 * 1000,
     headline: 'Drake London sees heavy target volume, operates as undisputed WR1 in Falcons new offense',
@@ -253,7 +253,7 @@ export const SEEDED_NEWS_STORIES: NewsStoryItem[] = [
   {
     id: 'studio-news-15',
     tag: 'CAMP',
-    tagColor: '#bea98e',
+    tagColor: '#6B3615',
     timeAgo: '3d ago',
     timestamp: Date.now() - 76 * 60 * 60 * 1000,
     headline: 'Ja\'Marr Chase details strong physical progress in training camp drills with Joe Burrow',
@@ -269,7 +269,7 @@ export const SEEDED_NEWS_STORIES: NewsStoryItem[] = [
   {
     id: 'studio-news-16',
     tag: 'CAMP',
-    tagColor: '#bea98e',
+    tagColor: '#6B3615',
     timeAgo: '4d ago',
     timestamp: Date.now() - 96 * 60 * 60 * 1000,
     headline: 'Lamar Jackson showcases lightning speed, operates Ravens new passing schemes cleanly',
@@ -301,7 +301,7 @@ export const SEEDED_NEWS_STORIES: NewsStoryItem[] = [
   {
     id: 'studio-news-18',
     tag: 'CAMP',
-    tagColor: '#bea98e',
+    tagColor: '#6B3615',
     timeAgo: '5d ago',
     timestamp: Date.now() - 120 * 60 * 60 * 1000,
     headline: 'Garrett Wilson develops spectacular redzone connection with Aaron Rodgers',
@@ -333,7 +333,7 @@ export const SEEDED_NEWS_STORIES: NewsStoryItem[] = [
   {
     id: 'studio-news-20',
     tag: 'CAMP',
-    tagColor: '#bea98e',
+    tagColor: '#6B3615',
     timeAgo: '6d ago',
     timestamp: Date.now() - 144 * 60 * 60 * 1000,
     headline: 'Trey McBride operates as primary intermediate threat in Cardinals camp drills',
@@ -349,7 +349,7 @@ export const SEEDED_NEWS_STORIES: NewsStoryItem[] = [
   {
     id: 'studio-news-21',
     tag: 'CAMP',
-    tagColor: '#bea98e',
+    tagColor: '#6B3615',
     timeAgo: '6d ago',
     timestamp: Date.now() - 148 * 60 * 60 * 1000,
     headline: 'Bijan Robinson sees heavy usage as hybrid receiver in Falcons training camp',

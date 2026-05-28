@@ -13,7 +13,6 @@ import AppHeader from '@/components/AppHeader';
 import AppTabBar from '@/components/AppTabBar';
 import DraftPositionSelector from '@/components/DraftPositionSelector';
 import LeagueRulesSelector from '@/components/LeagueRulesSelector';
-import RosterConstructionPanel from '@/components/RosterConstructionPanel';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import * as Haptics from 'expo-haptics';
 
@@ -65,10 +64,7 @@ function DraftSetupScreen() {
   const myRanks = useRankingsStore((state) => state.myRanks);
   const myRanksName = useRankingsStore((state) => state.myRanksName);
 
-  // Live Simulation and Telemetry hooks
-  const liveSimStats = useSimulationStore((state) => state.liveSimStats);
-  const startLiveSimulationLoop = useSimulationStore((state) => state.startLiveSimulationLoop);
-  const stopLiveSimulationLoop = useSimulationStore((state) => state.stopLiveSimulationLoop);
+
 
   // Dynamic Roster Slots Helpers
   const currentSlots = setup.rosterSlots || {
@@ -133,7 +129,7 @@ function DraftSetupScreen() {
 
   // Local UI configuration states
   const [scoring, setScoring] = useState<'Standard' | 'PPR' | 'Half-PPR' | 'Dynasty'>(setup.leagueFormat);
-  const [pickClock, setPickClock] = useState<number>(setup.pickClock || 60);
+  const [pickClock, setPickClock] = useState<number>(setup.pickClock !== undefined ? setup.pickClock : 0);
   const [userStrategy, setUserStrategy] = useState<'Late QB/TE Focus' | 'Hero RB' | 'Zero RB' | 'Balanced' | 'Robust RB' | 'Elite QB/TE Premium'>(
     (user?.preferences?.draftStrategy || setup.userStrategy || 'Late QB/TE Focus') as any
   );
@@ -141,31 +137,13 @@ function DraftSetupScreen() {
   const [passingTdPoints, setPassingTdPoints] = useState<4 | 6>(setup.passingTdPoints || 6);
   const [tePremium, setTePremium] = useState<boolean>(setup.tePremium || false);
   const [flexCount, setFlexCount] = useState<1 | 2>((setup.flexCount === 2 ? 2 : 1));
-  const [expandedField, setExpandedField] = useState<'scoring' | 'timer' | 'difficulty' | 'rankingsBase' | 'customRules' | 'roster' | 'strategy' | null>(null);
+  const [year, setYear] = useState<number>(setup.year || 2026);
+  const [expandedField, setExpandedField] = useState<'scoring' | 'timer' | 'difficulty' | 'rankingsBase' | 'customRules' | 'roster' | 'strategy' | 'year' | null>(null);
 
   const mainScrollRef = useRef<ScrollView>(null);
 
   // Looping breathing animation for the action button's gold outline
   const pulseAnim = useRef(new Animated.Value(0.4)).current;
-
-  // Auto-scroll expanded panels into focus for premium UX alignment
-  useEffect(() => {
-    if (expandedField) {
-      setTimeout(() => {
-        let scrollY = 0;
-        if (expandedField === 'strategy') scrollY = 160;
-        else if (expandedField === 'scoring') scrollY = 200;
-        else if (expandedField === 'rankingsBase') scrollY = 240;
-        else if (expandedField === 'difficulty') scrollY = 280;
-        else if (expandedField === 'customRules') scrollY = 320;
-        else if (expandedField === 'roster') scrollY = 480;
-
-        if (scrollY > 0) {
-          mainScrollRef.current?.scrollTo({ y: scrollY, animated: true });
-        }
-      }, 150);
-    }
-  }, [expandedField]);
 
   useEffect(() => {
     const pulse = Animated.loop(
@@ -193,13 +171,7 @@ function DraftSetupScreen() {
     });
   }, []);
 
-  // Background simulation telemetry loops for real-time strategy re-ranking
-  useEffect(() => {
-    startLiveSimulationLoop();
-    return () => {
-      stopLiveSimulationLoop();
-    };
-  }, [startLiveSimulationLoop, stopLiveSimulationLoop]);
+
 
   // Adjusters
   const selectLeagueSize = (size: number) => {
@@ -218,7 +190,7 @@ function DraftSetupScreen() {
     useAuthStore.getState().updatePreferences({ draftPos: pos });
   };
 
-  const toggleExpanded = (field: 'scoring' | 'timer' | 'difficulty' | 'rankingsBase' | 'customRules' | 'roster' | 'strategy') => {
+  const toggleExpanded = (field: 'scoring' | 'timer' | 'difficulty' | 'rankingsBase' | 'customRules' | 'roster' | 'strategy' | 'year') => {
     triggerHaptic(Haptics.ImpactFeedbackStyle.Light);
     setExpandedField((prev) => (prev === field ? null : field));
   };
@@ -232,7 +204,8 @@ function DraftSetupScreen() {
       passingTdPoints: passingTdPoints,
       tePremium: tePremium,
       flexCount: flexCount,
-      pickClock: pickClock
+      pickClock: pickClock,
+      year: year
     });
     useAuthStore.getState().updatePreferences({
       scoring: scoring,
@@ -251,7 +224,8 @@ function DraftSetupScreen() {
       passingTdPoints: passingTdPoints,
       tePremium: tePremium,
       flexCount: flexCount,
-      pickClock: pickClock
+      pickClock: pickClock,
+      year: year
     });
     useAuthStore.getState().updatePreferences({
       scoring: scoring,
@@ -271,72 +245,28 @@ function DraftSetupScreen() {
     'Zero RB': 42,
   } as Record<string, number>), []);
 
-  // State to freeze the card positions when the strategy section is expanded (preventing layout jumping/swapping under active scroll gestures)
-  const [strategyOrder, setStrategyOrder] = useState<string[]>(() => {
-    const initialStats = useSimulationStore.getState().liveSimStats;
-    return [...STRATEGIES]
-      .map((strat) => {
-        const record = initialStats?.strategyRecords?.[strat.name];
-        let winRate = DEFAULT_WIN_RATES[strat.name] || 40;
-        if (record && (record.wins > 0 || record.losses > 0)) {
-          const total = record.wins + record.losses;
-          winRate = Math.round((record.wins / total) * 100);
-        }
-        return { name: strat.name, winRate };
-      })
-      .sort((a, b) => b.winRate - a.winRate)
-      .map(s => s.name);
-  });
+  // Static curated order chosen by product owner (Decision 5 Option D). No underlying popularity or usage data drives this order.
+  const STRATEGIES_STATIC_ORDER = ['Zero RB', 'Hero RB', 'Balanced', 'Late QB/TE Focus', 'Robust RB', 'Elite QB/TE Premium'];
 
-  // Dynamically update the sorting order ONLY when the section is collapsed to prevent visual item shifting
-  useEffect(() => {
-    if (expandedField !== 'strategy') {
-      const sortedNames = [...STRATEGIES]
-        .map((strat) => {
-          const record = liveSimStats?.strategyRecords?.[strat.name];
-          let winRate = DEFAULT_WIN_RATES[strat.name] || 40;
-          if (record && (record.wins > 0 || record.losses > 0)) {
-            const total = record.wins + record.losses;
-            winRate = Math.round((record.wins / total) * 100);
-          }
-          return { name: strat.name, winRate };
-        })
-        .sort((a, b) => b.winRate - a.winRate)
-        .map(s => s.name);
-
-      const hasChanged = sortedNames.some((val, idx) => strategyOrder[idx] !== val);
-      if (hasChanged) {
-        setStrategyOrder(sortedNames);
-      }
-    }
-  }, [liveSimStats, expandedField, strategyOrder, DEFAULT_WIN_RATES]);
-
-  // Construct display strategies using the stable order while keeping individual performance win rates live
   const displayStrategies = useMemo(() => {
-    return strategyOrder.map((name) => {
+    return STRATEGIES_STATIC_ORDER.map((name) => {
       const original = STRATEGIES.find((s) => s.name === name)!;
-      const record = liveSimStats?.strategyRecords?.[name];
-      let winRate = DEFAULT_WIN_RATES[name] || 40;
-      if (record && (record.wins > 0 || record.losses > 0)) {
-        const total = record.wins + record.losses;
-        winRate = Math.round((record.wins / total) * 100);
-      }
       return {
         ...original,
-        winRate,
+        winRate: undefined,
       };
     });
-  }, [strategyOrder, liveSimStats, DEFAULT_WIN_RATES]);
+  }, [STRATEGIES]);
 
   return (
     <View style={styles.container}>
-      <BackgroundTexture />
+      <BackgroundTexture backgroundColor={Colors.primaryAccent} />
       <SafeAreaView style={styles.safeArea} edges={['top']}>
         
         <AppHeader
           title=""
           showBack={true}
-          backText="EXIT"
+          backText="BACK"
           backAction={() => {
             router.replace('/');
           }}
@@ -348,12 +278,27 @@ function DraftSetupScreen() {
           showsVerticalScrollIndicator={true}
           bounces={true}
         >
-          <DraftPositionSelector
-            leagueSize={setup.leagueSize}
-            userPosition={setup.userPosition}
-            onSelectLeagueSize={selectLeagueSize}
-            onSelectUserPosition={selectUserPosition}
-          />
+          <View style={styles.formCard}>
+            <DraftPositionSelector
+              hideLeagueSize={true}
+              leagueSize={setup.leagueSize}
+              userPosition={setup.userPosition}
+              onSelectLeagueSize={selectLeagueSize}
+              onSelectUserPosition={selectUserPosition}
+            />
+          </View>
+
+          <View style={styles.formCard}>
+            <DraftPositionSelector
+              hidePosition={true}
+              leagueSize={setup.leagueSize}
+              userPosition={setup.userPosition}
+              onSelectLeagueSize={selectLeagueSize}
+              onSelectUserPosition={selectUserPosition}
+            />
+          </View>
+
+          <Text style={styles.sectionHeader}>ADDITIONAL OPTIONS</Text>
 
           <LeagueRulesSelector
             scoring={scoring}
@@ -375,13 +320,15 @@ function DraftSetupScreen() {
             displayStrategies={displayStrategies}
             myRanks={myRanks}
             myRanksName={myRanksName}
-          />
-
-          <RosterConstructionPanel
             currentSlots={currentSlots}
             activeRosterCount={activeRosterCount}
             irRosterCount={irRosterCount}
             onAdjustSlot={handleAdjustSlot}
+            year={year}
+            setYear={(val) => {
+              setYear(val);
+              updateSetup({ year: val });
+            }}
           />
 
           <Pressable 
@@ -420,7 +367,29 @@ function createStyles(Colors: typeof LightColors) {
   return StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: Colors.background,
+      backgroundColor: Colors.primaryAccent,
+    },
+    formCard: {
+      backgroundColor: Colors.primaryAccent,
+      borderColor: Colors.midGray,
+      borderWidth: 1.5,
+      borderRadius: 16,
+      overflow: 'hidden',
+      shadowColor: '#000000',
+      shadowOffset: { width: 0, height: 6 },
+      shadowOpacity: 0.08,
+      shadowRadius: 12,
+      elevation: 4,
+      padding: Spacing.three,
+    },
+    sectionHeader: {
+      fontFamily: Fonts.stats,
+      fontSize: 9.5,
+      color: Colors.obsidianBlack,
+      fontWeight: 'bold',
+      letterSpacing: 1.5,
+      marginTop: Spacing.two,
+      marginBottom: Spacing.one,
     },
     safeArea: {
       flex: 1,
@@ -431,20 +400,19 @@ function createStyles(Colors: typeof LightColors) {
     scrollContent: {
       paddingHorizontal: Spacing.three,
       paddingTop: Spacing.one,
-      paddingBottom: Platform.OS === 'ios' ? 190 : 170,
+      paddingBottom: 0,
       gap: Spacing.two,
     },
     persistentMockBtn: {
       position: 'absolute',
       bottom: Platform.OS === 'ios' ? 104 : 96,
       right: Spacing.three,
-      backgroundColor: Colors.hofYellow,
-      paddingHorizontal: 20,
-      paddingVertical: 14,
-      borderRadius: 30,
+      backgroundColor: Colors.pylonOrange,
+      width: 140,
+      height: 48,
+      borderRadius: 24,
       borderWidth: 1.5,
-      borderColor: Colors.hofYellow,
-      minHeight: 48,
+      borderColor: Colors.pylonOrange,
       justifyContent: 'center',
       alignItems: 'center',
       zIndex: 9999,
@@ -457,9 +425,9 @@ function createStyles(Colors: typeof LightColors) {
     },
     persistentMockBtnPulseBorder: {
       ...StyleSheet.absoluteFillObject,
-      borderColor: Colors.hofYellow,
+      borderColor: Colors.pylonOrange,
       borderWidth: 1.5,
-      borderRadius: 30,
+      borderRadius: 24,
     },
     persistentMockBtnPressed: {
       transform: [{ scale: 0.96 }],
@@ -468,30 +436,31 @@ function createStyles(Colors: typeof LightColors) {
     persistentMockBtnText: {
       fontFamily: Fonts.headings,
       fontSize: 14,
-      color: '#040b1f',
+      color: Colors.primaryAccent,
       letterSpacing: 0.8,
     },
     autoDraftBtn: {
-      backgroundColor: Colors.surface,
-      borderColor: Colors.coltsNavy,
+      backgroundColor: 'transparent',
+      borderColor: Colors.midGray,
       borderWidth: 1.5,
-      borderRadius: 14,
-      height: 52,
+      borderRadius: 24,
+      width: 140,
+      height: 48,
       justifyContent: 'center',
       alignItems: 'center',
+      alignSelf: 'flex-start',
       marginTop: Spacing.two,
-      marginBottom: Spacing.four,
+      marginBottom: Platform.OS === 'ios' ? 104 : 96,
     },
     autoDraftBtnPressed: {
-      transform: [{ scale: 0.98 }],
-      backgroundColor: Colors.surfaceLifted,
+      transform: [{ scale: 0.96 }],
+      opacity: 0.95,
     },
     autoDraftBtnText: {
       fontFamily: Fonts.headings,
-      fontSize: 15,
-      color: Colors.coltsNavy,
-      fontWeight: '900',
-      letterSpacing: 0.5,
+      fontSize: 14,
+      color: Colors.obsidianBlack,
+      letterSpacing: 0.8,
     },
   });
 }

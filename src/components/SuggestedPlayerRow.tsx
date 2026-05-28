@@ -2,7 +2,6 @@ import React from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { useColors, Fonts, Spacing, LightColors, DarkColors } from '@/constants/theme';
 import { Player } from '@/store/mockData';
-import { PlayerHeadshot } from '@/components/PlayerHeadshot';
 import Svg, { Path } from 'react-native-svg';
 
 import { useThemeStore } from '@/store/useThemeStore';
@@ -29,16 +28,23 @@ export default function SuggestedPlayerRow({
   const activeStyles = isDark ? darkStyles : lightStyles;
 
   return (
-    <View style={activeStyles.suggestedItem}>
-      <PlayerHeadshot name={player.name} position={player.position} team={player.team} style={activeStyles.suggestedHeadshot} />
+    <View style={[
+      activeStyles.suggestedItem,
+      { borderLeftColor: Colors.positions[player.position as keyof typeof Colors.positions] || Colors.chromeSilver }
+    ]}>
+      <Text style={activeStyles.suggestedRank}>{player.rank}</Text>
+      <View style={[
+        activeStyles.posBadge,
+        {
+          backgroundColor: Colors.positions[player.position as keyof typeof Colors.positions] || Colors.chromeSilver,
+          borderColor: Colors.positions[player.position as keyof typeof Colors.positions] || Colors.chromeSilver
+        }
+      ]}>
+        <Text style={activeStyles.posBadgeText}>{player.posRank}</Text>
+      </View>
       <View style={activeStyles.suggestedInfo}>
-        <View style={activeStyles.suggestedHeaderRow}>
-          <Text style={activeStyles.suggestedName} numberOfLines={1}>{player.name}</Text>
-          <View style={[activeStyles.posBadge, { borderColor: Colors.positions[player.position as keyof typeof Colors.positions] || Colors.coltsNavyLight }]}>
-            <Text style={[activeStyles.posBadgeText, { color: Colors.positions[player.position as keyof typeof Colors.positions] || Colors.primaryAccent }]}>{player.posRank}</Text>
-          </View>
-        </View>
-        <Text style={activeStyles.suggestedSub}>{player.team} · Bye {player.bye} · ECR {player.rank}</Text>
+        <Text style={activeStyles.suggestedName} numberOfLines={1}>{player.name}</Text>
+        <Text style={activeStyles.suggestedSub}>{player.team} · Bye {player.bye}</Text>
       </View>
       
       <View style={activeStyles.suggestedActions}>
@@ -47,8 +53,8 @@ export default function SuggestedPlayerRow({
           <Text style={activeStyles.expertLbl}>Experts</Text>
         </View>
         <Pressable style={activeStyles.starBtn} onPress={onToggleStar}>
-          <Svg width={16} height={16} viewBox="0 0 24 24" fill={isStarred ? "#fbbf24" : "none"}>
-            <Path d="M12 17.27L18.18 21L16.54 13.97L22 9.24L14.81 8.62L12 2L9.19 8.62L2 9.24L7.46 13.97L5.82 21L12 17.27Z" stroke={isStarred ? "#fbbf24" : "#94a3b8"} strokeWidth={2} />
+          <Svg width={16} height={16} viewBox="0 0 24 24" fill={isStarred ? Colors.hofYellow : "none"}>
+            <Path d="M12 17.27L18.18 21L16.54 13.97L22 9.24L14.81 8.62L12 2L9.19 8.62L2 9.24L7.46 13.97L5.82 21L12 17.27Z" stroke={isStarred ? Colors.hofYellow : Colors.chromeSilver} strokeWidth={2} />
           </Svg>
         </Pressable>
         <Pressable 
@@ -66,7 +72,7 @@ export default function SuggestedPlayerRow({
 function createStyles(Colors: typeof LightColors) {
   return StyleSheet.create({
     suggestedItem: {
-      backgroundColor: Colors.surface,
+      backgroundColor: Colors.primaryAccent,
       borderRadius: 8,
       paddingVertical: 6,
       paddingHorizontal: Spacing.two,
@@ -74,39 +80,41 @@ function createStyles(Colors: typeof LightColors) {
       alignItems: 'center',
       gap: 8,
       borderWidth: 1,
-      borderColor: Colors.coltsNavyLight,
+      borderLeftWidth: 4,
+      borderColor: Colors.chromeSilver,
       height: 52,
     },
-    suggestedHeadshot: {
-      width: 34,
-      height: 34,
-      borderRadius: 17,
+    suggestedRank: {
+      fontFamily: Fonts.stats,
+      fontSize: 12,
+      color: Colors.secondaryAccent,
+      width: 22,
+      textAlign: 'center',
+      fontWeight: 'bold',
     },
     suggestedInfo: {
       flex: 1,
       justifyContent: 'center',
     },
-    suggestedHeaderRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 6,
-    },
     suggestedName: {
       fontFamily: Fonts.body,
       fontSize: 13,
       fontWeight: 'bold',
-      color: Colors.primaryAccent,
+      color: Colors.obsidianBlack,
     },
     posBadge: {
-      borderWidth: 1,
+      width: 34,
+      height: 20,
+      justifyContent: 'center',
+      alignItems: 'center',
       borderRadius: 4,
-      paddingHorizontal: 4,
-      paddingVertical: 1,
+      borderWidth: 1,
     },
     posBadgeText: {
-      fontFamily: Fonts.stats,
-      fontSize: 8,
-      fontWeight: '900',
+      fontFamily: Fonts.body,
+      fontSize: 9,
+      fontWeight: 'bold',
+      color: Colors.primaryAccent,
     },
     suggestedSub: {
       fontFamily: Fonts.body,
@@ -125,7 +133,7 @@ function createStyles(Colors: typeof LightColors) {
     expertVal: {
       fontFamily: Fonts.stats,
       fontSize: 11,
-      color: '#34d399',
+      color: Colors.obsidianBlack,
       fontWeight: 'bold',
     },
     expertLbl: {
@@ -140,8 +148,8 @@ function createStyles(Colors: typeof LightColors) {
       alignItems: 'center',
     },
     draftBtn: {
-      backgroundColor: Colors.hofYellow,
-      borderColor: Colors.hofYellow,
+      backgroundColor: Colors.pylonOrange,
+      borderColor: Colors.pylonOrange,
       borderWidth: 1,
       borderRadius: 6,
       paddingHorizontal: 10,
@@ -150,15 +158,15 @@ function createStyles(Colors: typeof LightColors) {
       alignItems: 'center',
     },
     draftBtnDisabled: {
-      backgroundColor: Colors.surfaceLifted,
-      borderColor: Colors.surfaceLifted,
+      backgroundColor: Colors.liftedCharcoal,
+      borderColor: Colors.liftedCharcoal,
       opacity: 0.4,
     },
     draftBtnText: {
       fontFamily: Fonts.headings,
       fontSize: 11,
       fontWeight: 'bold',
-      color: '#000000',
+      color: Colors.primaryAccent,
     },
     draftBtnTextDisabled: {
       color: Colors.secondaryAccent,

@@ -141,7 +141,7 @@ export default function PasswordRecoveryModal({
     <View style={styles.modalOverlay}>
       <View style={styles.modalContentCard}>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-          <Text style={styles.modalTitle}>PASSWORD RECOVERY 📲</Text>
+          <Text style={styles.modalTitle}>PASSWORD RECOVERY</Text>
           <Pressable
             onPress={() => {
               triggerHaptic(Haptics.ImpactFeedbackStyle.Light);
@@ -277,7 +277,7 @@ export default function PasswordRecoveryModal({
                 {isRecoveryLoading ? (
                   <ActivityIndicator size="small" color="#ffffff" />
                 ) : (
-                  <Text style={styles.modalBtnTextPrimary}>RESET & LOGIN ⚡</Text>
+                  <Text style={styles.modalBtnTextPrimary}>RESET & LOGIN</Text>
                 )}
               </Pressable>
             </View>

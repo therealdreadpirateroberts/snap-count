@@ -7,6 +7,7 @@ import { Colors, Fonts, Spacing, useColors } from '@/constants/theme';
 import { useThemeStore } from '@/store/useThemeStore';
 import { useAuthStore } from '@/store/useAuthStore';
 import * as Haptics from 'expo-haptics';
+import { ADMIN_ALLOWLIST } from '@/constants/admin';
 
 interface AppHeaderProps {
   title?: string;
@@ -17,6 +18,7 @@ interface AppHeaderProps {
   rightElement?: React.ReactNode;
   centerElement?: React.ReactNode;
   isLanding?: boolean;
+  showBrandBanner?: boolean;
 }
 
 export default function AppHeader({
@@ -28,6 +30,7 @@ export default function AppHeader({
   rightElement,
   centerElement,
   isLanding = false,
+  showBrandBanner = false,
 }: AppHeaderProps) {
   const Colors = useColors();
   const router = useRouter();
@@ -73,29 +76,15 @@ export default function AppHeader({
     if (backAction) {
       backAction();
     } else {
-      router.back();
+      if (router.canGoBack && router.canGoBack()) {
+        router.back();
+      } else {
+        router.replace('/');
+      }
     }
   };
 
-  const renderFootballIcon = (size: number) => {
-    return (
-      <Svg width={size} height={size} viewBox="-6 -6 36 36" fill="none" style={{ overflow: 'visible' }}>
-        <G rotation={-30} originX={12} originY={12}>
-          <Path
-            d="M 2 12 C 6 5, 18 5, 22 12 C 18 19, 6 19, 2 12 Z"
-            stroke={Colors.hofYellow}
-            strokeWidth={2}
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-          <Path d="M 7 12 H 17" stroke={Colors.hofYellow} strokeWidth={1.5} strokeLinecap="round" />
-          <Path d="M 9.5 9.5 V 14.5" stroke={Colors.hofYellow} strokeWidth={1.2} strokeLinecap="round" />
-          <Path d="M 12 9.5 V 14.5" stroke={Colors.hofYellow} strokeWidth={1.2} strokeLinecap="round" />
-          <Path d="M 14.5 9.5 V 14.5" stroke={Colors.hofYellow} strokeWidth={1.2} strokeLinecap="round" />
-        </G>
-      </Svg>
-    );
-  };
+
 
   const getAccountLabel = () => {
     if (!user) return 'LOGIN';
@@ -105,40 +94,41 @@ export default function AppHeader({
   return (
     <View style={styles.headerWrapper}>
       {/* 1. TOP BRANDING BANNER (Same on all pages) */}
-      <View style={styles.brandBanner}>
-        {/* Left container: Hamburger Menu button */}
-        <View style={styles.brandLeftContainer}>
-          {isLanding && (
-            <Pressable
-              style={({ pressed }) => [
-                styles.hamburgerBtn,
-                pressed && { opacity: 0.7 }
-              ]}
-              onPress={handleOpenDrawer}
-              hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
-              accessibilityLabel="Open Menu"
-            >
-              <Svg width={22} height={22} viewBox="0 0 24 24" fill="none">
-                <Path d="M4 6H20M4 12H20M4 18H20" stroke="#ffffff" strokeWidth={2.5} strokeLinecap="round" />
-              </Svg>
-            </Pressable>
-          )}
-        </View>
-
-        {/* Center branding */}
-        <View style={styles.brandCenter}>
-          {renderFootballIcon(38)}
-          <View style={styles.brandTitleContainer}>
-            <Text style={styles.brandTitle}>
-              MOCK
-              <Text style={styles.cursiveGoldText}>Maxxing</Text>
-            </Text>
+      {showBrandBanner && (
+        <View style={styles.brandBanner}>
+          {/* Left container: Hamburger Menu button */}
+          <View style={styles.brandLeftContainer}>
+            {isLanding && (
+              <Pressable
+                style={({ pressed }) => [
+                  styles.hamburgerBtn,
+                  pressed && { opacity: 0.7 }
+                ]}
+                onPress={handleOpenDrawer}
+                hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
+                accessibilityLabel="Open Menu"
+              >
+                <Svg width={22} height={22} viewBox="0 0 24 24" fill="none">
+                  <Path d="M4 6H20M4 12H20M4 18H20" stroke="#ffffff" strokeWidth={2.5} strokeLinecap="round" />
+                </Svg>
+              </Pressable>
+            )}
           </View>
-        </View>
 
-        {/* Right symmetric container (Empty placeholder for visual symmetry) */}
-        <View style={styles.brandRightContainer} />
-      </View>
+          {/* Center branding */}
+          <View style={styles.brandCenter}>
+            <View style={styles.brandTitleContainer}>
+              <Text style={styles.brandTitle}>
+                MOCK
+                <Text style={styles.cursiveGoldText}>Maxxing</Text>
+              </Text>
+            </View>
+          </View>
+
+          {/* Right symmetric container (Empty placeholder for visual symmetry) */}
+          <View style={styles.brandRightContainer} />
+        </View>
+      )}
 
       {/* 2. PERSISTENT NAV & COMPACT QUICK ACTIONS STRIP (Back, Title, Inbox & Account) */}
       <View style={styles.quickActionsStrip}>
@@ -157,7 +147,7 @@ export default function AppHeader({
               <Svg width={16} height={16} viewBox="0 0 24 24" fill="none">
                 <Path
                   d="M15 19L8 12L15 5"
-                  stroke={Colors.secondaryAccent}
+                  stroke={Colors.obsidianBlack}
                   strokeWidth={2.5}
                   strokeLinecap="round"
                   strokeLinejoin="round"
@@ -191,7 +181,7 @@ export default function AppHeader({
           >
             <View style={styles.quickActionIconWrapper}>
               <Svg width={12} height={12} viewBox="0 0 24 24" fill="none">
-                <Path d="M22 6C22 4.9 21.1 4 20 4H4C2.9 4 2 4.9 2 6M22 6V18C22 19.1 21.1 20 20 20H4C2.9 20 2 19.1 2 18V6M22 6L12 13L2 6" stroke={Colors.secondaryAccent} strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" />
+                <Path d="M22 6C22 4.9 21.1 4 20 4H4C2.9 4 2 4.9 2 6M22 6V18C22 19.1 21.1 20 20 20H4C2.9 20 2 19.1 2 18V6M22 6L12 13L2 6" stroke={Colors.obsidianBlack} strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" />
               </Svg>
               <View style={styles.inboxIndicatorDot} />
             </View>
@@ -216,12 +206,12 @@ export default function AppHeader({
               }
             }}
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-            accessibilityLabel="Account Settings"
+            accessibilityLabel="Account"
           >
             <View style={styles.quickActionIconWrapper}>
               <Svg width={12} height={12} viewBox="0 0 24 24" fill="none">
-                <Path d="M20 21V19C20 17.94 19.58 16.92 18.83 16.17C18.08 15.42 17.06 15 16 15H8C6.94 15 5.92 15.42 5.17 16.17C4.42 16.92 4 17.94 4 19V21" stroke={Colors.secondaryAccent} strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" />
-                <Path d="M12 11C14.2091 11 16 9.20914 16 7C16 4.79086 14.2091 3 12 3C9.79086 3 8 4.79086 8 7C8 9.20914 9.79086 11 12 11Z" stroke={Colors.secondaryAccent} strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" />
+                <Path d="M20 21V19C20 17.94 19.58 16.92 18.83 16.17C18.08 15.42 17.06 15 16 15H8C6.94 15 5.92 15.42 5.17 16.17C4.42 16.92 4 17.94 4 19V21" stroke={Colors.obsidianBlack} strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" />
+                <Path d="M12 11C14.2091 11 16 9.20914 16 7C16 4.79086 14.2091 3 12 3C9.79086 3 8 4.79086 8 7C8 9.20914 9.79086 11 12 11Z" stroke={Colors.obsidianBlack} strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" />
               </Svg>
             </View>
             <Text style={styles.quickActionLabel}>{getAccountLabel()}</Text>
@@ -238,22 +228,22 @@ export default function AppHeader({
       >
         <View style={styles.drawerBackdrop}>
           <Pressable style={StyleSheet.absoluteFill} onPress={handleCloseDrawer} />
-          <Animated.View style={[styles.drawerCard, { transform: [{ translateX: slideAnim }], backgroundColor: Colors.surface, borderColor: Colors.coltsNavyLight }]}>
+          <Animated.View style={[styles.drawerCard, { transform: [{ translateX: slideAnim }], backgroundColor: Colors.liftedCanvas, borderColor: Colors.midGray }]}>
             <View style={styles.drawerHeader}>
               <View style={styles.drawerAvatar}>
                 <Text style={styles.drawerAvatarText}>{getAccountLabel()}</Text>
               </View>
               <View style={styles.drawerUserText}>
-                <Text style={[styles.drawerUserName, { color: Colors.primaryAccent }]}>
+                <Text style={styles.drawerUserName}>
                   {user?.firstName ? user.firstName.toUpperCase() : 'COACH'}
                 </Text>
-                <Text style={[styles.drawerUserEmail, { color: Colors.secondaryAccent }]}>
+                <Text style={styles.drawerUserEmail}>
                   {user?.email || 'OFFLINE'}
                 </Text>
               </View>
             </View>
 
-            <View style={[styles.drawerDivider, { backgroundColor: Colors.coltsNavyLight }]} />
+            <View style={[styles.drawerDivider, { backgroundColor: Colors.midGray }]} />
 
             <View style={styles.drawerMenu}>
               <Pressable
@@ -266,7 +256,7 @@ export default function AppHeader({
                   router.push('/wizard/setup');
                 }}
               >
-                <Text style={[styles.drawerItemText, { color: Colors.primaryAccent }]}>MOCK DRAFT WIZARD 🏈</Text>
+                <Text style={styles.drawerItemText}>MOCK DRAFT WIZARD</Text>
               </Pressable>
 
               <Pressable
@@ -279,7 +269,7 @@ export default function AppHeader({
                   router.push('/rankings');
                 }}
               >
-                <Text style={[styles.drawerItemText, { color: Colors.primaryAccent }]}>ADP CHEAT SHEETS 📋</Text>
+                <Text style={styles.drawerItemText}>ADP CHEAT SHEETS</Text>
               </Pressable>
 
               <Pressable
@@ -292,7 +282,7 @@ export default function AppHeader({
                   router.push('/settings');
                 }}
               >
-                <Text style={[styles.drawerItemText, { color: Colors.primaryAccent }]}>ACCOUNT CONFIGURATION ⚙️</Text>
+                <Text style={styles.drawerItemText}>ACCOUNT</Text>
               </Pressable>
 
               <Pressable
@@ -305,21 +295,23 @@ export default function AppHeader({
                   router.push('/settings?tab=inbox');
                 }}
               >
-                <Text style={[styles.drawerItemText, { color: Colors.primaryAccent }]}>INBOX MESSAGES ✉️</Text>
+                <Text style={styles.drawerItemText}>INBOX MESSAGES</Text>
               </Pressable>
 
-              <Pressable
-                style={({ pressed }) => [
-                  styles.drawerItem,
-                  pressed && styles.drawerItemPressed
-                ]}
-                onPress={() => {
-                  handleCloseDrawer();
-                  router.push('/qa-simulation');
-                }}
-              >
-                <Text style={[styles.drawerItemText, { color: Colors.primaryAccent }]}>SIMULATION HARNESS 🧪</Text>
-              </Pressable>
+              {user && ADMIN_ALLOWLIST.includes(user.email) && (
+                <Pressable
+                  style={({ pressed }) => [
+                    styles.drawerItem,
+                    pressed && styles.drawerItemPressed
+                  ]}
+                  onPress={() => {
+                    handleCloseDrawer();
+                    router.push('/algo-admin');
+                  }}
+                >
+                  <Text style={styles.drawerItemText}>ALGO ADMIN</Text>
+                </Pressable>
+              )}
             </View>
 
             <View style={{ flex: 1 }} />
@@ -335,7 +327,7 @@ export default function AppHeader({
                 router.replace('/');
               }}
             >
-              <Text style={styles.drawerLogoutText}>LOG OUT COACH ⚡</Text>
+              <Text style={styles.drawerLogoutText}>LOG OUT COACH</Text>
             </Pressable>
           </Animated.View>
         </View>
@@ -355,7 +347,7 @@ function createStyles(Colors: typeof import('@/constants/theme').LightColors) {
       justifyContent: 'space-between',
       paddingBottom: Spacing.three,
       paddingTop: Spacing.three,
-      backgroundColor: '#2c2c2c', // Hardcoded stable brand navy/graphite backdrop
+      backgroundColor: Colors.deepFieldGreen, // Deep Field Green background
       borderBottomWidth: 1,
       borderBottomColor: 'rgba(255, 255, 255, 0.1)',
       width: '100%',
@@ -438,7 +430,7 @@ function createStyles(Colors: typeof import('@/constants/theme').LightColors) {
       fontFamily: Fonts.stats,
       fontSize: 10,
       fontWeight: '600',
-      color: Colors.secondaryAccent,
+      color: Colors.obsidianBlack,
       letterSpacing: 0.5,
     },
     quickTitleWrapper: {
@@ -506,7 +498,7 @@ function createStyles(Colors: typeof import('@/constants/theme').LightColors) {
       top: Platform.OS === 'ios' ? 56 : 60,
       right: 16,
       width: 270,
-      backgroundColor: Colors.surface,
+      backgroundColor: Colors.deepGraphiteCharcoal,
       borderRadius: 16,
       borderWidth: 1,
       borderColor: Colors.glassBorder,
@@ -524,7 +516,7 @@ function createStyles(Colors: typeof import('@/constants/theme').LightColors) {
       right: 16,
       width: 12,
       height: 12,
-      backgroundColor: Colors.surface,
+      backgroundColor: Colors.deepGraphiteCharcoal,
       borderLeftWidth: 1,
       borderTopWidth: 1,
       borderColor: Colors.glassBorder,
@@ -589,7 +581,7 @@ function createStyles(Colors: typeof import('@/constants/theme').LightColors) {
     },
     dividerLight: {
       height: 1,
-      backgroundColor: Colors.coltsNavyLight,
+      backgroundColor: Colors.chromeSilver,
       marginHorizontal: -14,
     },
     popoverOptions: {
@@ -646,7 +638,7 @@ function createStyles(Colors: typeof import('@/constants/theme').LightColors) {
     quickActionsStrip: {
       flexDirection: 'row',
       alignItems: 'center',
-      backgroundColor: Colors.surface, // Solid background striped from left to right
+      backgroundColor: Colors.primaryAccent, // Chalk White background
       paddingVertical: 6,
       paddingHorizontal: 16,
       width: '100%',
@@ -663,9 +655,9 @@ function createStyles(Colors: typeof import('@/constants/theme').LightColors) {
       width: 24,
       height: 24,
       borderRadius: 12,
-      backgroundColor: Colors.surfaceLifted,
+      backgroundColor: 'transparent',
       borderWidth: 1,
-      borderColor: Colors.coltsNavyLight,
+      borderColor: Colors.obsidianBlack,
       justifyContent: 'center',
       alignItems: 'center',
       position: 'relative',
@@ -674,18 +666,18 @@ function createStyles(Colors: typeof import('@/constants/theme').LightColors) {
       fontFamily: Fonts.headings,
       fontSize: 11,
       fontWeight: '600',
-      color: Colors.secondaryAccent,
+      color: Colors.obsidianBlack,
       letterSpacing: 0.5,
     },
     quickActionsStripDivider: {
       width: 1,
       height: 16,
-      backgroundColor: Colors.coltsNavyLight,
+      backgroundColor: Colors.obsidianBlack,
     },
     quickActionsDivider: {
       width: 1,
       height: 16,
-      backgroundColor: Colors.coltsNavyLight,
+      backgroundColor: Colors.obsidianBlack,
       marginHorizontal: 4,
     },
     inboxIndicatorDot: {
@@ -697,7 +689,7 @@ function createStyles(Colors: typeof import('@/constants/theme').LightColors) {
       borderRadius: 3,
       backgroundColor: '#ef4444',
       borderWidth: 1,
-      borderColor: Colors.surfaceLifted,
+      borderColor: Colors.primaryAccent,
     },
     hamburgerBtn: {
       width: 44,
@@ -736,7 +728,7 @@ function createStyles(Colors: typeof import('@/constants/theme').LightColors) {
       width: 48,
       height: 48,
       borderRadius: 24,
-      backgroundColor: '#bea98e',
+      backgroundColor: Colors.hofYellow,
       justifyContent: 'center',
       alignItems: 'center',
     },
@@ -744,7 +736,7 @@ function createStyles(Colors: typeof import('@/constants/theme').LightColors) {
       fontFamily: Fonts.headings,
       fontSize: 16,
       fontWeight: 'bold',
-      color: '#000000',
+      color: Colors.obsidianBlack,
     },
     drawerUserText: {
       flex: 1,
@@ -754,10 +746,12 @@ function createStyles(Colors: typeof import('@/constants/theme').LightColors) {
       fontFamily: Fonts.headings,
       fontSize: 14,
       fontWeight: 'bold',
+      color: Colors.obsidianBlack,
     },
     drawerUserEmail: {
       fontFamily: Fonts.stats,
       fontSize: 10,
+      color: Colors.secondaryAccent,
     },
     drawerDivider: {
       height: 1,
@@ -775,13 +769,14 @@ function createStyles(Colors: typeof import('@/constants/theme').LightColors) {
       justifyContent: 'center',
     },
     drawerItemPressed: {
-      backgroundColor: 'rgba(255, 255, 255, 0.08)',
+      backgroundColor: 'rgba(0, 0, 0, 0.08)',
     },
     drawerItemText: {
       fontFamily: Fonts.headings,
       fontSize: 13,
       fontWeight: 'bold',
       letterSpacing: 0.5,
+      color: Colors.obsidianBlack,
     },
     drawerLogoutBtn: {
       backgroundColor: 'rgba(239, 68, 68, 0.08)',

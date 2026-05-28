@@ -31,6 +31,7 @@ export interface PlayerRowProps {
   panHandlers: any;
   dragY: Animated.Value;
   onAddPlayer: (player: Player) => void;
+  onPlayerPress?: (player: Player) => void;
   Colors: any;
   styles: any;
 }
@@ -47,18 +48,22 @@ export const PlayerRow = React.memo(({
   panHandlers,
   dragY,
   onAddPlayer,
+  onPlayerPress,
   Colors: themeColors,
   styles
 }: PlayerRowProps) => {
   const ppg = Math.round((item.projectedPoints || 0) / 17);
 
   const rowContent = (
-    <View style={[
-      styles.rankingsRowItem, 
-      isDrafted && styles.rankingsRowItemDrafted,
-      isSuggestion && styles.rankingsRowItemSuggestion,
-      isCurrentlyDragged && styles.rankingsRowItemDragging
-    ]}>
+    <Pressable 
+      style={[
+        styles.rankingsRowItem, 
+        isDrafted && styles.rankingsRowItemDrafted,
+        isSuggestion && styles.rankingsRowItemSuggestion,
+        isCurrentlyDragged && styles.rankingsRowItemDragging
+      ]}
+      onPress={() => onPlayerPress?.(item)}
+    >
       <View style={styles.rankingsRowLeftSection}>
         <View style={styles.normalRankSquare}>
           <Text style={styles.normalRankText}>{isSuggestion ? '—' : item.rank}</Text>
@@ -102,7 +107,7 @@ export const PlayerRow = React.memo(({
           </View>
         </View>
       ) : null}
-    </View>
+    </Pressable>
   );
 
   return (

@@ -1,8 +1,9 @@
 import React, { useMemo, useState, useEffect, useCallback } from 'react';
-import { View, Text, Pressable, ScrollView, Image, ActivityIndicator, Platform } from 'react-native';
+import { View, Text, Pressable, ScrollView, Image, ActivityIndicator, Platform, Animated, StyleSheet, useWindowDimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useDraftStore } from '@/store/useDraftStore';
+import { usePlayerStore } from '@/store/usePlayerStore';
 import { useHistoryStore } from '@/store/useHistoryStore';
 import { useSimulationStore } from '@/store/useSimulationStore';
 import { getTeamNameForIndex, getUserTeamName } from '@/store/_helpers';
@@ -11,12 +12,16 @@ import { Fonts, useColors } from '@/constants/theme';
 import { useThemeStore } from '@/store/useThemeStore';
 import BackgroundTexture from '@/components/BackgroundTexture';
 import AppHeader from '@/components/AppHeader';
+import AppTabBar from '@/components/AppTabBar';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import GradeCard from '@/components/GradeCard';
+import { PlayerHeadshot } from '@/components/PlayerHeadshot';
+import { ProceduralTradingCard, resolvePlayerCard } from '@/components/ProceduralTradingCard';
+import { PlayerCardData } from '@/types/tradingCard';
+import { PLAYER_REGISTRY } from '@/store/playerRegistry';
 import RosterTable from '@/components/RosterTable';
-import AILearningChart from '@/components/AILearningChart';
-import StandingsTable from '@/components/StandingsTable';
 import * as Haptics from 'expo-haptics';
+import Svg, { Path, Circle, G, Rect, Defs, Stop, LinearGradient } from 'react-native-svg';
 import { summaryStyles as activeStyles } from './summary.styles';
 
 // Helper to format player names cleanly to First Initial + Last Name
@@ -33,52 +38,23 @@ const getDisplayName = (name: string) => {
   return name;
 };
 
-// Map players to direct ESPN player IDs for premium headshots
-const getPlayerHeadshotUrl = (espnId: number | null, position: string, team?: string) => {
-  if (position === 'DST' && team) {
-    return getTeamLogoUrl(team);
-  }
-  if (espnId) {
-    return `https://a.espncdn.com/i/headshots/nfl/players/full/${espnId}.png`;
-  }
-  return `https://a.espncdn.com/combiner/i?img=/i/headshots/nfl/players/full/default.png&w=350&h=254`;
-};
 
 const getGradeLetterFromPoints = (pts: number): string => {
-  if (pts >= 11.5) return 'A+';
-  if (pts >= 10.5) return 'A';
-  if (pts >= 9.5) return 'A-';
-  if (pts >= 8.5) return 'B+';
-  if (pts >= 7.5) return 'B';
-  if (pts >= 6.5) return 'B-';
-  if (pts >= 5.5) return 'C+';
-  if (pts >= 4.5) return 'C';
-  if (pts >= 3.5) return 'C-';
-  if (pts >= 2.5) return 'D+';
-  if (pts >= 1.5) return 'D';
-  return 'F';
+  const rounded = Math.round(pts);
+  const clamped = Math.max(1, Math.min(10, rounded));
+  return String(clamped);
 };
 
 const getGradePoints = (grade: string): number => {
-  switch (grade) {
-    case 'A+': return 12;
-    case 'A': return 11;
-    case 'A-': return 10;
-    case 'B+': return 9;
-    case 'B': return 8;
-    case 'B-': return 7;
-    case 'C+': return 6;
-    case 'C': return 5;
-    case 'C-': return 4;
-    case 'D+': return 3;
-    case 'D': return 2;
-    default: return 0;
-  }
+  const pts = parseInt(grade, 10);
+  return isNaN(pts) ? 0 : pts;
 };
 
 function DraftSummaryScreen() {
   const Colors = useColors();
   const router = useRouter();
+  const { width } = useWindowDimensions();
+  const isDesktop = Platform.OS === 'web' && width >= 1024;
   
   const triggerHaptic = async (style = Haptics.ImpactFeedbackStyle.Light) => {
     if (Platform.OS !== 'web') {
@@ -101,9 +77,33 @@ function DraftSummaryScreen() {
   const populateHistory = useHistoryStore((state) => state.populateHistory);
   const clearHistory = useHistoryStore((state) => state.clearHistory);
 
-  const [activeTab, setActiveTab] = useState<'roster' | 'coach' | 'performance' | 'leaderboard' | 'board'>('roster');
   const [isSimulating, setIsSimulating] = useState(false);
   const [simProgress, setSimProgress] = useState(0);
+
+  const [cardFlipped, setCardFlipped] = useState(false);
+  const flipAnim = React.useRef(new Animated.Value(0)).current;
+
+  const rotateY = flipAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['0deg', '180deg'],
+  });
+
+  const handleCardPress = () => {
+    triggerHaptic(Haptics.ImpactFeedbackStyle.Medium);
+    const toValue = cardFlipped ? 0 : 1;
+    
+    Animated.spring(flipAnim, {
+      toValue,
+      friction: 8,
+      tension: 40,
+      useNativeDriver: true,
+    }).start();
+
+    // Toggle content exactly halfway through the rotation animation
+    setTimeout(() => {
+      setCardFlipped(!cardFlipped);
+    }, 120);
+  };
 
 
   const runSimulationBatches = useCallback((totalCount: number) => {
@@ -139,12 +139,6 @@ function DraftSummaryScreen() {
   const { grade, valueScore, playoffChance, projectedWins, projectedLosses } = useMemo(() => {
     return getDraftGrade();
   }, [getDraftGrade]);
-
-  const handleRestart = () => {
-    triggerHaptic(Haptics.ImpactFeedbackStyle.Medium);
-    resetDraft();
-    router.replace('/wizard/setup');
-  };
 
   const handleHome = () => {
     triggerHaptic(Haptics.ImpactFeedbackStyle.Medium);
@@ -286,7 +280,9 @@ function DraftSummaryScreen() {
 
   // EXPECTED PERFORMANCE GAME-BY-GAME & QUARTER-BY-QUARTER
   const performanceTelemetry = useMemo(() => {
-    const avgScore = 100 + (valueScore * 0.8) + (grade === 'A+' ? 15 : grade === 'A' ? 10 : grade.startsWith('B') ? 5 : 0);
+    const gradeVal = parseInt(grade, 10);
+    const gradeBonus = gradeVal >= 10 ? 15 : gradeVal === 9 ? 10 : gradeVal >= 7 ? 5 : 0;
+    const avgScore = 100 + (valueScore * 0.8) + gradeBonus;
     const weeklyProjections = Array.from({ length: 14 }, (_, idx) => {
       const week = idx + 1;
       const seed = week * 17 + projectedWins;
@@ -417,6 +413,439 @@ function DraftSummaryScreen() {
     clearHistory();
   };
 
+  // Build reactive DraftRecap for the completed draft
+  const currentRecap = useMemo(() => {
+    if (roster.length === 0) return null;
+    
+    // Map Roster to PickInfo
+    const mappedRoster = roster.map((p, idx) => {
+      const pickNum = getUserPickNumber(p.name);
+      const round = ((p as any).round !== undefined && (p as any).round !== null)
+        ? (p as any).round
+        : Math.ceil((typeof pickNum === 'number' ? pickNum : 1) / setup.leagueSize);
+      return {
+        name: p.name,
+        position: p.position,
+        team: p.team || 'FA',
+        image: p.espnId ? `https://a.espncdn.com/i/headshots/nfl/players/full/${p.espnId}.png` : '',
+        pick: pickNum,
+        round
+      };
+    });
+
+    const topPicks = mappedRoster.slice(0, 3);
+    const projectedPPG = Math.round(performanceTelemetry.avgScore);
+    const byeRank = Math.max(1, Math.min(12, 12 - projectedWins + 3));
+    
+    return {
+      id: 'active_completion',
+      grade: grade,
+      efficiency: `${Math.min(99.9, Math.max(70.0, 90.0 + valueScore * 1.5)).toFixed(1)}%`,
+      projectedRecord: `${projectedWins}-${projectedLosses}`,
+      topPicks,
+      roster: mappedRoster,
+      pointsPerGame: `${projectedPPG} PPG`,
+      byeWeekStrength: `Rank: #${byeRank}`,
+      syncId: `MX-${Math.floor(projectedWins * 10 || 90)}-${roster[0]?.name.slice(0, 2).toUpperCase() || 'MM'}`,
+    };
+  }, [roster, grade, valueScore, projectedWins, projectedLosses, performanceTelemetry.avgScore, setup.leagueSize]);
+
+  const getPsaGrade = (rank: number) => {
+    if (rank <= 5) return { num: '10', desc: 'GEM MT' };
+    if (rank <= 15) return { num: '9', desc: 'MINT' };
+    if (rank <= 30) return { num: '8', desc: 'NM-MT' };
+    if (rank <= 50) return { num: '7', desc: 'NM' };
+    if (rank <= 80) return { num: '6', desc: 'EX-MT' };
+    if (rank <= 110) return { num: '5', desc: 'EX' };
+    return { num: '4', desc: 'VG-EX' };
+  };
+
+  const getPlayerDetails = (name: string, position?: string): {
+    rank: number;
+    adp: number;
+    projectedPoints: number;
+    bye: number;
+    posRank: string;
+  } => {
+    const storePlayers = usePlayerStore.getState().players || [];
+    const cleanName = name.toLowerCase().trim();
+    const storeMatch = storePlayers.find((p: any) => p.name.toLowerCase().trim() === cleanName);
+    if (storeMatch) {
+      return {
+        rank: storeMatch.rank,
+        adp: storeMatch.adp,
+        projectedPoints: storeMatch.projectedPoints,
+        bye: storeMatch.bye,
+        posRank: storeMatch.posRank,
+      };
+    }
+
+    let baseRank = 150;
+    let baseAdp = 150;
+    let basePoints = 120;
+    let baseBye = 6;
+    let basePosRank = `${position || 'WR'}12`;
+
+    const regPlayer = PLAYER_REGISTRY.find(p => p.name.toLowerCase().trim() === cleanName);
+    const nameHash = name.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+    
+    if (regPlayer) {
+      baseBye = (nameHash % 9) + 4;
+      if (regPlayer.position === 'QB') {
+        baseRank = (nameHash % 20) + 1;
+        baseAdp = baseRank * 4 + 10;
+        basePoints = 320 - baseRank * 4;
+        basePosRank = `QB${baseRank}`;
+      } else if (regPlayer.position === 'RB') {
+        baseRank = (nameHash % 40) + 1;
+        baseAdp = baseRank * 2.5 + 5;
+        basePoints = 240 - baseRank * 2.5;
+        basePosRank = `RB${baseRank}`;
+      } else if (regPlayer.position === 'WR') {
+        baseRank = (nameHash % 50) + 1;
+        baseAdp = baseRank * 2.2 + 5;
+        basePoints = 230 - baseRank * 2.0;
+        basePosRank = `WR${baseRank}`;
+      } else if (regPlayer.position === 'TE') {
+        baseRank = (nameHash % 25) + 1;
+        baseAdp = baseRank * 4 + 20;
+        basePoints = 180 - baseRank * 3;
+        basePosRank = `TE${baseRank}`;
+      } else {
+        baseRank = (nameHash % 30) + 120;
+        baseAdp = baseRank + 5;
+        basePoints = 110 - (baseRank - 120);
+        basePosRank = `${regPlayer.position}${baseRank - 120 + 1}`;
+      }
+    } else {
+      baseBye = (nameHash % 9) + 4;
+      baseRank = (nameHash % 200) + 1;
+      baseAdp = baseRank + (nameHash % 10);
+      basePoints = 200 - (baseRank * 0.5);
+    }
+
+    return {
+      rank: baseRank,
+      adp: Number(baseAdp.toFixed(1)),
+      projectedPoints: Number(basePoints.toFixed(1)),
+      bye: baseBye,
+      posRank: basePosRank,
+    };
+  };
+
+  const getPlayerStatsForHeader = (position: string, projectedPoints: number) => {
+    const pts = projectedPoints || 0;
+    const ppg = (pts / 17).toFixed(1);
+    let yards = 0;
+    let touchdowns = 0;
+
+    if (position === 'QB') {
+      yards = Math.round(pts * 12.5);
+      touchdowns = Math.round(pts * 0.085);
+    } else if (position === 'RB') {
+      yards = Math.round(pts * 4.2 + 200);
+      touchdowns = Math.round(pts * 0.038);
+    } else if (position === 'WR') {
+      yards = Math.round(pts * 4.5 + 100);
+      touchdowns = Math.round(pts * 0.032);
+    } else if (position === 'TE') {
+      yards = Math.round(pts * 4.8);
+      touchdowns = Math.round(pts * 0.042);
+    } else {
+      yards = Math.round(pts);
+      touchdowns = 0;
+    }
+
+    return {
+      ppg: `${ppg}`,
+      yards: yards.toLocaleString(),
+      tds: `${touchdowns}`
+    };
+  };
+
+  const renderPsaLabel = (recap: any, player: any) => {
+    const { style, variant } = resolvePlayerCard(String(recap.id || player.name));
+    const year = setup.year || 2026;
+    const details = getPlayerDetails(player.name, player.position);
+    const headerStats = getPlayerStatsForHeader(player.position, details.projectedPoints);
+    const psaGrade = getPsaGrade(details.rank);
+
+    return (
+      <View style={activeStyles.psaLabelContainer}>
+        <View style={activeStyles.psaTwoColumnLayout}>
+          {/* LEFT COLUMN */}
+          <View style={activeStyles.psaLeftColumn}>
+            {/* Band 1 - Year tag */}
+            <Text style={activeStyles.psaYearTag} numberOfLines={1}>
+              {`${year} ${style.name.toUpperCase()} ${variant.name.toUpperCase()}`}
+            </Text>
+            {/* Band 2 - Player name */}
+            <Text style={activeStyles.psaPlayerName} numberOfLines={1}>
+              {player.name.toUpperCase()}
+            </Text>
+            {/* Band 3 - Player meta row */}
+            <Text style={activeStyles.psaMetaRow} numberOfLines={1}>
+              {`${player.team} · ${details.posRank} · BYE ${details.bye}`}
+            </Text>
+            {/* Band 4 - Stat row */}
+            <View style={activeStyles.psaStatRow}>
+              <View style={activeStyles.psaStatCell}>
+                <Text style={activeStyles.psaStatLabel}>PPG</Text>
+                <Text style={activeStyles.psaStatValue}>{headerStats.ppg}</Text>
+              </View>
+              <View style={activeStyles.psaStatCell}>
+                <Text style={activeStyles.psaStatLabel}>YARDS</Text>
+                <Text style={activeStyles.psaStatValue}>{headerStats.yards}</Text>
+              </View>
+              <View style={activeStyles.psaStatCell}>
+                <Text style={activeStyles.psaStatLabel}>TDS</Text>
+                <Text style={activeStyles.psaStatValue}>{headerStats.tds}</Text>
+              </View>
+            </View>
+          </View>
+
+          {/* RIGHT COLUMN VERTICAL STACK */}
+          <View style={activeStyles.psaRightColumn}>
+            {/* Stack Item 1 - ECR Score */}
+            <View style={activeStyles.psaEcrBox}>
+              <Text style={activeStyles.psaRightLabel}>ECR</Text>
+              <Text style={activeStyles.psaRightValue}>{details.rank}</Text>
+            </View>
+            {/* Stack Item 2 - ADP Score (Yellow Highlight) */}
+            <View style={activeStyles.psaAdpBox}>
+              <Text style={activeStyles.psaAdpLabel}>ADP</Text>
+              <Text style={activeStyles.psaAdpValue}>{details.adp}</Text>
+            </View>
+            {/* Stack Item 3 - PSA Grade */}
+            <View style={activeStyles.psaGradeBox}>
+              <Text style={activeStyles.psaGradeLabel}>{psaGrade.desc}</Text>
+              <Text style={activeStyles.psaGradeValue}>{psaGrade.num}</Text>
+            </View>
+          </View>
+        </View>
+      </View>
+    );
+  };
+
+  const getCardTemplate = (name: string) => {
+    const templates = ['chrome', 'rpa', 'kaboom', 'downtown'];
+    let hash = 0;
+    for (let i = 0; i < name.length; i++) {
+      hash += name.charCodeAt(i);
+    }
+    return templates[hash % templates.length];
+  };
+
+  const renderToppsChromeCard = (recap: any, player: any) => {
+    const teamColors: Record<string, string[]> = {
+      SF: ['#AA0000', '#B3995D'],
+      LV: ['#000000', '#A6AEB5'],
+      KC: ['#E31837', '#FFB81C'],
+      DAL: ['#869397', '#002244'],
+      LAR: ['#003594', '#FFA300'],
+      DET: ['#0076B6', '#B0B7BC'],
+      NYJ: ['#125740', '#FFFFFF'],
+      ATL: ['#A71930', '#000000'],
+      BUF: ['#00338D', '#C60C30'],
+      GB: ['#203731', '#FFB612'],
+    };
+
+    const colors = teamColors[player.team] || ['#64748b', '#475569', '#FFCD00'];
+
+    const cardData: PlayerCardData = {
+      id: String(recap.id || player.name),
+      name: player.name,
+      position: player.position as any,
+      team: player.team,
+      teamColors: colors,
+      stats: {
+        'GRADE': recap.grade,
+        'EFFICIENCY': recap.efficiency,
+        'PGM': recap.pointsPerGame,
+        'RECORD': recap.projectedRecord
+      },
+      imageUrl: player.image || undefined,
+      is_rookie: player.is_rookie,
+    };
+
+    return (
+      <ProceduralTradingCard player={cardData} width={240} />
+    );
+  };
+
+  const renderExpandedBackCardContent = (recap: any) => {
+    const detail = coachStrategyAnalysis;
+
+    // Generate PSA text
+    const psaGradeNum = recap.grade;
+    let psaGradeText = 'GEM MT';
+    switch (psaGradeNum) {
+      case '10': psaGradeText = 'GEM MT'; break;
+      case '9': psaGradeText = 'MINT'; break;
+      case '8': psaGradeText = 'NM-MT'; break;
+      case '7': psaGradeText = 'NM'; break;
+      case '6': psaGradeText = 'EX-MT'; break;
+      case '5': psaGradeText = 'EX'; break;
+      case '4': psaGradeText = 'VG-EX'; break;
+      case '3': psaGradeText = 'VG'; break;
+      case '2': psaGradeText = 'GOOD'; break;
+      case '1': psaGradeText = 'POOR'; break;
+      default: psaGradeText = 'MINT'; break;
+    }
+
+    return (
+      <View style={activeStyles.expandedBackContainer}>
+        {/* Premium PSA Label Header */}
+        <View style={activeStyles.expandedPsaHeader}>
+          <View style={activeStyles.expandedPsaHeaderContent}>
+            <View style={activeStyles.expandedPsaHeaderLeft}>
+              <Text style={activeStyles.expandedPsaHeaderKicker} numberOfLines={1}>2025 MOCK MAXXING CHROME</Text>
+              <Text style={activeStyles.expandedPsaHeaderTitle} numberOfLines={1}>DRAFT ROSTER AUDIT</Text>
+              <Text style={activeStyles.expandedPsaHeaderMeta} numberOfLines={1}>
+                REC: {recap.projectedRecord} • {recap.pointsPerGame}
+              </Text>
+            </View>
+            <View style={activeStyles.expandedPsaHeaderRight}>
+              <Text style={activeStyles.expandedPsaHeaderGradeDesc} numberOfLines={1}>{psaGradeText}</Text>
+              <Text style={activeStyles.expandedPsaHeaderGradeNum}>{psaGradeNum}</Text>
+            </View>
+          </View>
+          <View style={activeStyles.expandedPsaBarcodeRow}>
+            <Text style={activeStyles.expandedPsaBarcode}>||||| | |||| | ||||| | ||| ||</Text>
+            <Text style={activeStyles.expandedPsaSerial}>#{recap.syncId}</Text>
+          </View>
+        </View>
+
+        {/* Scrollable Content inside the Slab backing */}
+        <ScrollView 
+          style={activeStyles.expandedScrollArea} 
+          showsVerticalScrollIndicator={false}
+          nestedScrollEnabled={true}
+        >
+          {/* Section 1: The Selected Roster */}
+          <View style={activeStyles.expandedSection}>
+            <Text style={activeStyles.expandedSectionTitle}>PICKED ROSTER (15 ROUNDS)</Text>
+            <View style={activeStyles.rosterListContainer}>
+              {recap.roster.map((player: any, idx: number) => {
+                const roundText = `RD ${player.round}`;
+                return (
+                  <View key={idx} style={activeStyles.rosterRowItem}>
+                    <View style={activeStyles.rosterRowLeft}>
+                      <View style={activeStyles.rosterRoundPill}>
+                        <Text style={activeStyles.rosterRoundText}>{roundText}</Text>
+                      </View>
+                      <View style={activeStyles.rosterPlayerInfo}>
+                        <Text style={activeStyles.rosterPlayerName} numberOfLines={1}>
+                          {player.name}
+                        </Text>
+                        <Text style={activeStyles.rosterPlayerTeamPos}>
+                          {player.position} • {player.team}
+                        </Text>
+                      </View>
+                    </View>
+                    <View style={activeStyles.rosterRowRight}>
+                      <Text style={activeStyles.rosterPickText}>{player.pick}</Text>
+                    </View>
+                  </View>
+                );
+              })}
+            </View>
+          </View>
+
+          {/* Section 2: Coaching Telemetry Report */}
+          <View style={activeStyles.expandedSection}>
+            <Text style={activeStyles.expandedSectionTitle}>COACHING TELEMETRY</Text>
+            <View style={activeStyles.expandedInsightsCard}>
+              <Text style={activeStyles.expandedInsightsText}>
+                {detail.feedback}
+              </Text>
+            </View>
+          </View>
+
+          {/* Section 3: Rarity/Efficiency Metrics */}
+          <View style={activeStyles.expandedSection}>
+            <Text style={activeStyles.expandedSectionTitle}>METRIC TELEMETRY</Text>
+            <View style={activeStyles.expandedTelemetryRow}>
+              <View style={activeStyles.expandedTelemetryBox}>
+                <Text style={activeStyles.expandedTelemetryVal}>{recap.efficiency}</Text>
+                <Text style={activeStyles.expandedTelemetryLbl}>DRAFT EFFICIENCY</Text>
+              </View>
+              <View style={activeStyles.expandedTelemetryBox}>
+                <Text style={activeStyles.expandedTelemetryVal}>
+                  #{byeConflictCount === 0 ? 1 : byeConflictCount === 1 ? 3 : 5}
+                </Text>
+                <Text style={activeStyles.expandedTelemetryLbl}>BYE WEEK RANK</Text>
+              </View>
+            </View>
+          </View>
+        </ScrollView>
+
+        {/* Return CTA */}
+        <Pressable 
+          style={({ pressed }) => [
+            activeStyles.expandedCloseFlipBtn,
+            pressed && activeStyles.expandedCloseFlipBtnPressed
+          ]} 
+          onPress={handleCardPress}
+        >
+          <Text style={activeStyles.expandedCloseFlipBtnText}>TAP TO FLIP BACK</Text>
+        </Pressable>
+      </View>
+    );
+  };
+
+  const renderPsaSlabComponent = () => {
+    if (!currentRecap) return null;
+    const player = currentRecap.topPicks[0];
+    if (!player) return null;
+
+    return (
+      <View style={activeStyles.cardContainer}>
+        <Pressable 
+          onPress={handleCardPress}
+          style={({ pressed }) => [
+            activeStyles.cardPressableArea,
+            pressed && activeStyles.cardPressableAreaPressed
+          ]}
+        >
+          <Animated.View style={[
+            { flex: 1 },
+            { transform: [{ rotateY }] }
+          ]}>
+            {cardFlipped ? (
+              <View style={[activeStyles.maximizedCardBack, { transform: [{ rotateY: '180deg' }] }]}>
+                {renderExpandedBackCardContent(currentRecap)}
+              </View>
+            ) : (
+              <View style={activeStyles.maximizedCardFront}>
+                {renderPsaLabel(currentRecap, player)}
+                {renderToppsChromeCard(currentRecap, player)}
+                
+                {/* Full-Slab Glossy Reflection Overlay representing a protective shiny acrylic shell */}
+                <View style={activeStyles.slabGlossOverlay} pointerEvents="none">
+                  <Svg style={StyleSheet.absoluteFillObject} width="100%" height="100%">
+                    <Defs>
+                      <LinearGradient id={`summarySlabGloss`} x1="0" y1="0" x2="1" y2="1">
+                        <Stop offset="0%" stopColor="rgba(255,255,255,0)" />
+                        <Stop offset="25%" stopColor="rgba(255,255,255,0)" />
+                        <Stop offset="38%" stopColor="rgba(255,255,255,0.18)" />
+                        <Stop offset="42%" stopColor="rgba(255,255,255,0.30)" />
+                        <Stop offset="46%" stopColor="rgba(255,255,255,0.18)" />
+                        <Stop offset="58%" stopColor="rgba(255,255,255,0)" />
+                        <Stop offset="100%" stopColor="rgba(255,255,255,0)" />
+                      </LinearGradient>
+                    </Defs>
+                    <Rect width="100%" height="100%" fill={`url(#summarySlabGloss)`} />
+                  </Svg>
+                </View>
+              </View>
+            )}
+          </Animated.View>
+        </Pressable>
+      </View>
+    );
+  };
+
 
 
   return (
@@ -427,27 +856,13 @@ function DraftSummaryScreen() {
         <AppHeader
           title="DRAFT SCORECARD"
           subtitle="HIGH-FIDELITY ANALYTICS SUITE"
+          showBack={true}
+          backText="HOME"
+          backAction={handleHome}
         />
 
-        <GradeCard 
-          grade={grade}
-          projectedWins={projectedWins}
-          projectedLosses={projectedLosses}
-          playoffChance={playoffChance}
-        />
-
-        <View style={activeStyles.tabSwitcher}>
-          {['roster', 'coach', 'performance', 'leaderboard', 'board'].map((tab) => (
-            <Pressable 
-              key={tab}
-              style={[activeStyles.tabButton, activeTab === tab && activeStyles.tabButtonActive]}
-              onPress={() => { setActiveTab(tab as any); triggerHaptic(Haptics.ImpactFeedbackStyle.Light); }}
-            >
-              <Text style={[activeStyles.tabButtonText, activeTab === tab && activeStyles.tabButtonTextActive]}>
-                {tab.toUpperCase()}
-              </Text>
-            </Pressable>
-          ))}
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', paddingTop: 20, paddingBottom: 96 }}>
+          {renderPsaSlabComponent()}
         </View>
 
         {isSimulating && (
@@ -463,354 +878,7 @@ function DraftSummaryScreen() {
           </View>
         )}
 
-        <ScrollView 
-          contentContainerStyle={activeStyles.scrollContent} 
-          showsVerticalScrollIndicator={false}
-        >
-          {activeTab === 'roster' && (
-            <RosterTable 
-              roster={roster}
-              setup={setup}
-              draftHistory={draftHistory}
-              userTeamName={getUserTeamName()}
-            />
-          )}
-
-          {activeTab === 'coach' && (
-            <View style={activeStyles.coachContainer}>
-              <View style={activeStyles.coachBubble}>
-                <Text style={activeStyles.coachTitle}>STRATEGY COACH FEEDBACK</Text>
-                <Text style={[activeStyles.coachStatus, coachStrategyAnalysis.success ? activeStyles.coachSuccess : activeStyles.coachWarning]}>
-                  {coachStrategyAnalysis.success ? '🏆 MASTERFUL EXECUTION' : '⚠️ STRATEGIC DEVIATION'}
-                </Text>
-                <Text style={activeStyles.coachFeedback}>{coachStrategyAnalysis.feedback}</Text>
-
-                <Text style={activeStyles.coachSubHeader}>SUGGESTED STRATEGY ALTERATIONS:</Text>
-                {coachStrategyAnalysis.suggestions.map((sug, i) => (
-                  <Text key={i} style={activeStyles.coachSuggestionItem}>
-                    • {sug}
-                  </Text>
-                ))}
-              </View>
-
-              <Text style={activeStyles.coachSectionTitle}>ROUND-BY-ROUND DRAFT VALUE</Text>
-              <View style={activeStyles.valueList}>
-                {draftHistory.filter(h => h.teamName === getUserTeamName() || h.teamName === 'Your Team').map((pick) => {
-                  const val = pick.player.adp - pick.pickNumber;
-                  const isSteal = val > 0;
-                  const isReach = val < 0;
-
-                  return (
-                    <View key={pick.pickNumber} style={activeStyles.valueRow}>
-                      <View style={activeStyles.valueRoundBadge}>
-                        <Text style={activeStyles.valueRoundText}>RD {pick.round}</Text>
-                        <Text style={activeStyles.valuePickText}>PK {pick.pickNumber}</Text>
-                      </View>
-                      
-                      <Image 
-                        source={{ uri: getPlayerHeadshotUrl(pick.player.espnId, pick.player.position, pick.player.team) }} 
-                        style={activeStyles.valueHeadshot}
-                      />
-
-                      <View style={activeStyles.valueInfo}>
-                        <Text style={activeStyles.valueName} numberOfLines={1}>{getDisplayName(pick.player.name)}</Text>
-                        <Text style={activeStyles.valueMeta}>{pick.player.position} · {pick.player.team} · ECR #{pick.player.rank}</Text>
-                      </View>
-
-                      <View style={[
-                        activeStyles.valBadge, 
-                        isSteal && activeStyles.valSteal, 
-                        isReach && activeStyles.valReach
-                      ]}>
-                        <Text style={[
-                          activeStyles.valBadgeText, 
-                          isSteal && activeStyles.valStealText, 
-                          isReach && activeStyles.valReachText
-                        ]}>
-                          {val === 0 ? 'ON ADP' : val > 0 ? `+${val} VAL` : `${val} REACH`}
-                        </Text>
-                      </View>
-                    </View>
-                  );
-                })}
-              </View>
-            </View>
-          )}
-
-          {activeTab === 'performance' && (
-            <View style={activeStyles.perfContainer}>
-              <View style={activeStyles.telemetryCard}>
-                <Text style={activeStyles.telemetryCardTitle}>SEASON TELEMETRY REPORT</Text>
-                <View style={activeStyles.telemetryStatsRow}>
-                  <View style={activeStyles.telemetryStat}>
-                    <Text style={activeStyles.telemetryStatLabel}>AVG WEEKLY SCORE</Text>
-                    <Text style={activeStyles.telemetryStatVal}>{Math.round(performanceTelemetry.avgScore)}</Text>
-                  </View>
-                  <View style={activeStyles.telemetryStat}>
-                    <Text style={activeStyles.telemetryStatLabel}>TOTAL POINTS FOR</Text>
-                    <Text style={activeStyles.telemetryStatVal}>{performanceTelemetry.ptsScored}</Text>
-                  </View>
-                  <View style={activeStyles.telemetryStat}>
-                    <Text style={activeStyles.telemetryStatLabel}>TOTAL POINTS AGAINST</Text>
-                    <Text style={activeStyles.telemetryStatVal}>{performanceTelemetry.ptsAllowed}</Text>
-                  </View>
-                </View>
-              </View>
-
-              <View style={activeStyles.routineGrid}>
-                <View style={[activeStyles.routineCard, { borderColor: '#22c55e33' }]}>
-                  <Text style={activeStyles.routineHeading}>🌟 EXCELS ROUTINELY AT</Text>
-                  <Text style={activeStyles.routineBullet}>• Positional bye-week optimization</Text>
-                  <Text style={activeStyles.routineBullet}>
-                    {valueScore >= 0 
-                      ? '• Capturing premium ADP value slips' 
-                      : '• Stacking high-efficiency starter floor'}
-                  </Text>
-                  <Text style={activeStyles.routineBullet}>• Drafting elite WR vertical weapons</Text>
-                </View>
-
-                <View style={[activeStyles.routineCard, { borderColor: '#ef444433' }]}>
-                  <Text style={activeStyles.routineHeading}>⚠️ FAILS ROUTINELY AT</Text>
-                  <Text style={activeStyles.routineBullet}>• Over-valuing secondary defense/kicker assets</Text>
-                  <Text style={activeStyles.routineBullet}>
-                    {byeConflictCount >= 2 
-                      ? '• Tolerating bye-week roster lockouts' 
-                      : '• Early round reached positional capitalization'}
-                  </Text>
-                  <Text style={activeStyles.routineBullet}>• Neglecting late-round backup QB insurance</Text>
-                </View>
-              </View>
-
-              <Text style={activeStyles.perfSectionTitle}>PROJECTED MATCH PLAYOUTS (14 WEEKS)</Text>
-              <View style={activeStyles.weeklyList}>
-                {performanceTelemetry.weeklyProjections.map((match) => (
-                  <View key={match.week} style={activeStyles.weeklyRow}>
-                    <View style={activeStyles.weeklyRoundLabel}>
-                      <Text style={activeStyles.weeklyRoundText}>WK {match.week}</Text>
-                    </View>
-                    
-                    <View style={activeStyles.weeklyRangeContainer}>
-                      <Text style={activeStyles.weeklyRangeLabelText}>VS {match.opponent.toUpperCase()}</Text>
-                      <View style={activeStyles.rangeBarBg}>
-                        <View style={[
-                          activeStyles.rangeBarFill,
-                          {
-                            left: `${Math.max(0, (match.floor - 80) * 100 / 80)}%`,
-                            width: `${Math.max(10, (match.ceiling - match.floor) * 100 / 80)}%`
-                          }
-                        ]} />
-                        <View style={[
-                          activeStyles.rangeDot,
-                          { left: `${Math.max(0, (match.median - 80) * 100 / 80)}%` }
-                        ]} />
-                      </View>
-                      <Text style={activeStyles.weeklyScoreDetail}>
-                        Range: {match.floor} - {match.ceiling} pts · Median: {match.median} pts
-                      </Text>
-                    </View>
-
-                    <View style={[activeStyles.matchOutcomeBadge, match.isWin ? activeStyles.matchWin : activeStyles.matchLoss]}>
-                      <Text style={[activeStyles.matchOutcomeText, match.isWin ? activeStyles.matchWinText : activeStyles.matchLossText]}>
-                        {match.isWin ? `W (${match.median}-${match.oppScore})` : `L (${match.median}-${match.oppScore})`}
-                      </Text>
-                    </View>
-                  </View>
-                ))}
-              </View>
-
-              <Text style={activeStyles.perfSectionTitle}>QUARTER-BY-QUARTER TELEMETRY</Text>
-              <View style={activeStyles.quarterGrid}>
-                <View style={activeStyles.quarterCard}>
-                  <Text style={activeStyles.quarterTitle}>Q1 (WEEKS 1-4)</Text>
-                  <Text style={activeStyles.quarterSubtitle}>{"\"Early-Season Burst\""}</Text>
-                  <Text style={activeStyles.quarterStat}>STRENGTH: ELITE (94%)</Text>
-                  <Text style={activeStyles.quarterBody}>Your healthy starters carry extreme high-end ADP strength to capture massive early momentum.</Text>
-                </View>
-
-                <View style={activeStyles.quarterCard}>
-                  <Text style={activeStyles.quarterTitle}>Q2 (WEEKS 5-8)</Text>
-                  <Text style={activeStyles.quarterSubtitle}>{"\"Bye Week Navigation\""}</Text>
-                  <Text style={activeStyles.quarterStat}>RATING: {getByeScore()}%</Text>
-                  <Text style={activeStyles.quarterBody}>
-                    {byeConflictCount >= 2 
-                      ? 'Roster contains severe overlapping positional byes. Waiver-wire streams required.' 
-                      : 'Excellent bye dispersion gives you an immense advantage during heavy bye weeks.'}
-                  </Text>
-                </View>
-
-                <View style={activeStyles.quarterCard}>
-                  <Text style={activeStyles.quarterTitle}>Q3 (WEEKS 9-12)</Text>
-                  <Text style={activeStyles.quarterSubtitle}>{"\"Mid-Season Consolidation\""}</Text>
-                  <Text style={activeStyles.quarterStat}>STRENGTH: STABLE (88%)</Text>
-                  <Text style={activeStyles.quarterBody}>Projected starter metrics are locked in. Roster capital guarantees highly consistent double-digit outputs.</Text>
-                </View>
-
-                <View style={activeStyles.quarterCard}>
-                  <Text style={activeStyles.quarterTitle}>Q4 (WEEKS 13-17)</Text>
-                  <Text style={activeStyles.quarterSubtitle}>{"\"Late-Season Playoff Push\""}</Text>
-                  <Text style={activeStyles.quarterStat}>
-                    DEPTH: {benchPlayers.length >= 5 ? 'DEEP (92%)' : 'THIN (64%)'}
-                  </Text>
-                  <Text style={activeStyles.quarterBody}>
-                    {benchPlayers.length >= 5
-                      ? 'Your deep bench ensures you survive late-season attrition and locking playoff runs.'
-                      : 'Roster is thin. A single starting injury severely risks late playoff competitiveness.'}
-                  </Text>
-                </View>
-              </View>
-            </View>
-          )}
-
-          {activeTab === 'leaderboard' && (
-            <View style={activeStyles.lobbyContainer}>
-              <View style={activeStyles.aiPanel}>
-                <Text style={activeStyles.aiPanelTitle}>🤖 BOT MANAGER AI COGNITIVE TELEMETRY</Text>
-                
-                <AILearningChart
-                  botTrainingSims={botTrainingSims}
-                  isSimulating={isSimulating}
-                  simProgress={simProgress}
-                />
-
-                <Text style={activeStyles.aiProgressExplanation}>
-                  {botTrainingSims >= 10000 
-                    ? '🏆 Bots are fully trained! Selection noise is minimized and strategy weights are fully optimized.' 
-                    : '⚡ Bots are currently training. Running simulations decreases decision noise and refines positional strategy parameters.'}
-                </Text>
-
-                <View style={activeStyles.aiActionRow}>
-                  <Pressable style={activeStyles.aiActionBtn} onPress={handlePopulateSims}>
-                    <Text style={activeStyles.aiActionBtnText}>SIMULATE 5,000 LEAGUES</Text>
-                  </Pressable>
-                  <Pressable style={[activeStyles.aiActionBtn, activeStyles.aiClearBtn]} onPress={handleClearHistory}>
-                    <Text style={activeStyles.aiActionBtnTextClear}>RESET DATABASE</Text>
-                  </Pressable>
-                </View>
-              </View>
-
-              <Text style={activeStyles.lobbySectionTitle}>HISTORICAL STANDINGS LOBBY ({historicalDrafts.length.toLocaleString()} DRAFTS)</Text>
-              
-              <StandingsTable
-                leaderboardData={leaderboardData}
-                userTeamName={getUserTeamName()}
-              />
-            </View>
-          )}
-
-          {activeTab === 'board' && (
-            <View style={activeStyles.boardSection}>
-              <View style={activeStyles.boardHeaderCard}>
-                <Text style={activeStyles.boardHeaderTitle}>FULL DRAFT BOARD</Text>
-                <Text style={activeStyles.boardHeaderSub}>
-                  Review the entire 15-round, pick-by-pick league selections. Swipe horizontally to see all teams.
-                </Text>
-              </View>
-
-              <ScrollView horizontal={true} showsHorizontalScrollIndicator={true}>
-                <View style={activeStyles.boardGridContainer}>
-                  <View style={activeStyles.boardRow}>
-                    <View style={activeStyles.boardRoundHeaderCell}>
-                      <Text style={activeStyles.boardRoundHeaderText}>ROUND</Text>
-                    </View>
-                    {Array.from({ length: setup.leagueSize }, (_, idx) => {
-                      const name = getTeamNameForIndex(idx, setup.userPosition);
-                      const isUser = name === getUserTeamName() || name === 'Your Team';
-                      return (
-                        <View 
-                          key={idx} 
-                          style={[
-                            activeStyles.boardTeamHeaderCell, 
-                            isUser && activeStyles.boardTeamHeaderCellUser
-                          ]}
-                        >
-                          <Text style={[activeStyles.boardTeamHeaderText, isUser && activeStyles.boardTeamHeaderTextUser]} numberOfLines={1}>
-                            {isUser ? 'YOUR TEAM' : name.toUpperCase()}
-                          </Text>
-                          <Text style={activeStyles.boardTeamSubText}>
-                            Pick {idx + 1}
-                          </Text>
-                        </View>
-                      );
-                    })}
-                  </View>
-
-                  {Array.from({ length: setup.rounds || 15 }, (_, rIdx) => {
-                    const roundNum = rIdx + 1;
-                    return (
-                      <View key={rIdx} style={activeStyles.boardRow}>
-                        <View style={activeStyles.boardRoundCell}>
-                          <Text style={activeStyles.boardRoundCellText}>RD {roundNum}</Text>
-                        </View>
-
-                        {Array.from({ length: setup.leagueSize }, (_, tIdx) => {
-                          const pick = draftHistory.find(
-                            h => h.round === roundNum && h.teamIndex === tIdx
-                          );
-                          const cellTeamName = getTeamNameForIndex(tIdx, setup.userPosition);
-                          const isUser = cellTeamName === getUserTeamName() || cellTeamName === 'Your Team';
-
-                          if (!pick) {
-                            return (
-                              <View key={tIdx} style={activeStyles.boardPlayerCellEmpty}>
-                                <Text style={activeStyles.boardPlayerTextEmpty}>-</Text>
-                              </View>
-                            );
-                          }
-
-                          const player = pick.player;
-                          const posColor = Colors.positions[player.position as keyof typeof Colors.positions] || '#94a3b8';
-
-                          return (
-                            <View 
-                              key={tIdx} 
-                              style={[
-                                activeStyles.boardPlayerCell,
-                                isUser && activeStyles.boardPlayerCellUser,
-                                { borderLeftColor: posColor, borderLeftWidth: 4 }
-                              ]}
-                            >
-                              <View style={activeStyles.boardCellTopRow}>
-                                <View style={[activeStyles.boardCellPosBadge, { backgroundColor: posColor }]}>
-                                  <Text style={activeStyles.boardCellPosText}>{player.position}</Text>
-                                </View>
-                                <Text style={activeStyles.boardCellPickNumber}>
-                                  #{pick.pickNumber}
-                                </Text>
-                              </View>
-                              <Text style={activeStyles.boardCellName} numberOfLines={1}>
-                                {getDisplayName(player.name)}
-                              </Text>
-                              <Text style={activeStyles.boardCellMeta}>
-                                {player.team || 'FA'} · Bye {player.bye || '-'}
-                              </Text>
-                            </View>
-                          );
-                        })}
-                      </View>
-                    );
-                  })}
-                </View>
-              </ScrollView>
-            </View>
-          )}
-
-          <View style={activeStyles.actionContainer}>
-            <Pressable 
-              style={({ pressed }) => [activeStyles.primaryBtn, pressed && activeStyles.btnPressed]} 
-              onPress={handleRestart}
-            >
-              <Text style={activeStyles.primaryBtnText}>START NEW MOCK DRAFT</Text>
-            </Pressable>
-
-            <Pressable 
-              style={({ pressed }) => [activeStyles.secondaryBtn, pressed && activeStyles.btnPressed]} 
-              onPress={handleHome}
-            >
-              <Text style={activeStyles.secondaryBtnText}>EXIT TO LOBBY</Text>
-            </Pressable>
-          </View>
-
-        </ScrollView>
+        {!isDesktop && <AppTabBar visible={true} />}
       </SafeAreaView>
     </View>
   );

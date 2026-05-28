@@ -128,16 +128,16 @@ export default function RosterSummaryCard({
 function createStyles(Colors: typeof LightColors) {
   return StyleSheet.create({
     rosterCard: {
-      backgroundColor: '#6B3615', // Pigskin Brown leather panels
+      backgroundColor: Colors.deepGraphite, // Deep Graphite content surface backing
       borderRadius: 8, // subtle, not pillowy
       padding: 12, // cramped trays read as toolbars, rosters need high density
       borderWidth: 1.5,
-      borderColor: 'rgba(244, 245, 247, 0.15)', // elegant graphite/chalk overlay
+      borderColor: Colors.pigskinBrown, // Pigskin Brown accent flourish border
       position: 'relative',
       overflow: 'hidden',
     },
     rosterCardUser: {
-      borderColor: '#FFC107', // Highlight User team with gold borders
+      borderColor: Colors.hofYellow, // Highlight User team with gold borders
     },
     innerHighlight: {
       position: 'absolute',
@@ -150,14 +150,14 @@ function createStyles(Colors: typeof LightColors) {
     rosterCardTitle: {
       fontFamily: Fonts.headings,
       fontSize: 13,
-      color: '#9EA7B0', // Chrome Silver title
+      color: Colors.primaryAccent, // Chalk White title
       fontWeight: '900',
       letterSpacing: 1,
       marginBottom: Spacing.two,
       paddingHorizontal: 2,
     },
     rosterCardTitleUser: {
-      color: '#F4F5F7', // Chalk White for user
+      color: Colors.primaryAccent, // Chalk White for user
     },
     rosterCardGrid: {
       flexDirection: 'row',
@@ -185,13 +185,13 @@ function createStyles(Colors: typeof LightColors) {
       fontFamily: Fonts.stats,
       fontSize: 9,
       fontWeight: 'bold',
-      color: '#9EA7B0', // Chrome Silver position label
+      color: 'rgba(244, 245, 247, 0.7)', // Chalk White position label
     },
     playerMetaText: {
       fontFamily: Fonts.body,
       fontSize: 8,
       fontWeight: '600',
-      color: 'rgba(158, 167, 176, 0.7)', // Chrome Silver at 70% opacity
+      color: 'rgba(244, 245, 247, 0.6)', // Chalk White at 60% opacity
     },
     playerNameText: {
       fontFamily: Fonts.headings,
@@ -204,7 +204,7 @@ function createStyles(Colors: typeof LightColors) {
       backgroundColor: 'transparent',
       borderRadius: 6,
       borderWidth: 1,
-      borderColor: 'rgba(158, 167, 176, 0.35)', // Chrome Silver dashed outline
+      borderColor: 'rgba(244, 245, 247, 0.35)', // Chalk White dashed outline
       borderStyle: 'dashed',
       padding: 8,
       width: '48.5%',
@@ -216,13 +216,13 @@ function createStyles(Colors: typeof LightColors) {
       fontFamily: Fonts.stats,
       fontSize: 10,
       fontWeight: 'bold',
-      color: 'rgba(158, 167, 176, 0.65)',
+      color: 'rgba(244, 245, 247, 0.65)',
     },
     emptySlotSub: {
       fontFamily: Fonts.body,
       fontSize: 7,
       fontWeight: 'bold',
-      color: 'rgba(158, 167, 176, 0.4)',
+      color: 'rgba(244, 245, 247, 0.4)',
       letterSpacing: 0.5,
       marginTop: 2,
     },

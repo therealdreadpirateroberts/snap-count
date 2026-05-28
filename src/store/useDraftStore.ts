@@ -57,6 +57,7 @@ export const useDraftStore = create<DraftState>((set, get) => ({
     passingTdPoints: 6,
     tePremium: false,
     flexCount: 1,
+    year: 2026,
     rosterSlots: {
       QB: 1,
       RB: 2,
@@ -84,11 +85,11 @@ export const useDraftStore = create<DraftState>((set, get) => ({
       nextSetup.userPosition = nextSetup.leagueSize;
     }
     
-    // If format or rankings base changed and we're in setup status, re-apply and re-sort
-    if ((updates.leagueFormat || updates.rankingsBase) && state.draftStatus === 'setup') {
+    // If format, rankings base, or year changed and we're in setup status, re-apply and re-sort
+    if ((updates.leagueFormat || updates.rankingsBase || updates.year) && state.draftStatus === 'setup') {
       const myRanks = useRankingsStore.getState().myRanks;
       const nextPlayers = applyFormatAndSort(
-        generateMockRankings(), 
+        generateMockRankings(updates.year !== undefined ? updates.year : nextSetup.year), 
         updates.leagueFormat || state.setup.leagueFormat,
         updates.rankingsBase || state.setup.rankingsBase,
         myRanks
@@ -102,7 +103,7 @@ export const useDraftStore = create<DraftState>((set, get) => ({
   startDraft: () => {
     const { setup } = get();
     const myRanks = useRankingsStore.getState().myRanks;
-    const freshPlayers = applyFormatAndSort(generateMockRankings(), setup.leagueFormat, setup.rankingsBase, myRanks);
+    const freshPlayers = applyFormatAndSort(generateMockRankings(setup.year), setup.leagueFormat, setup.rankingsBase, myRanks);
     usePlayerStore.getState().setPlayers(freshPlayers);
     set({
       draftStatus: 'drafting',
@@ -117,7 +118,7 @@ export const useDraftStore = create<DraftState>((set, get) => ({
     const { setup } = get();
     const myRanks = useRankingsStore.getState().myRanks;
     const botTrainingSims = useHistoryStore.getState().botTrainingSims;
-    const freshPlayers = applyFormatAndSort(generateMockRankings(), setup.leagueFormat, setup.rankingsBase, myRanks);
+    const freshPlayers = applyFormatAndSort(generateMockRankings(setup.year), setup.leagueFormat, setup.rankingsBase, myRanks);
     const draftHistory: DraftPick[] = [];
     const totalPicks = setup.rounds * setup.leagueSize;
 
@@ -258,10 +259,10 @@ export const useDraftStore = create<DraftState>((set, get) => ({
   },
 
   resetDraft: () => {
-    log('DraftStore', '🔄 [Store Telemetry] resetDraft() invoked!');
+    log('DraftStore', '[Store Telemetry] resetDraft() invoked!');
     const { setup } = get();
     const myRanks = useRankingsStore.getState().myRanks;
-    const freshPlayers = applyFormatAndSort(generateMockRankings(), setup.leagueFormat, setup.rankingsBase, myRanks);
+    const freshPlayers = applyFormatAndSort(generateMockRankings(setup.year), setup.leagueFormat, setup.rankingsBase, myRanks);
     usePlayerStore.getState().setPlayers(freshPlayers);
     const randomPos = 1;
     set({
@@ -455,7 +456,7 @@ export const useDraftStore = create<DraftState>((set, get) => ({
           log('DraftStore', `[CPU Debug] Pick ${currentPick}: Critical error in exception fallback:`, fallbackErr);
         }
       }
-    }, 450); // Animated 450ms pick delay
+    }, 112); // Animated 112ms pick delay
   },
 
   getSuggestedPicks: () => {
@@ -574,7 +575,7 @@ export const useDraftStore = create<DraftState>((set, get) => ({
     const userRoster = teamRosters[userIndex] || [];
     
     if (userRoster.length === 0) {
-      return { grade: 'B', valueScore: 0, playoffChance: 50, projectedWins: 7, projectedLosses: 7 };
+      return { grade: '8', valueScore: 0, playoffChance: 50, projectedWins: 7, projectedLosses: 7 };
     }
 
     const calculateRosterScore = (roster: Player[]): number => {
@@ -722,13 +723,14 @@ export const useDraftStore = create<DraftState>((set, get) => ({
     });
     const avgDiff = userPicks.length > 0 ? totalDiff / userPicks.length : 0;
 
-    let grade = 'B';
-    if (avgWins >= 10.0) grade = 'A+';
-    else if (avgWins >= 9.0) grade = 'A';
-    else if (avgWins >= 8.0) grade = 'B+';
-    else if (avgWins >= 7.0) grade = 'B';
-    else if (avgWins >= 6.0) grade = 'C';
-    else grade = 'D';
+    let grade = '8';
+    if (avgWins >= 10.0) grade = '10';
+    else if (avgWins >= 9.0) grade = '9';
+    else if (avgWins >= 8.0) grade = '8';
+    else if (avgWins >= 7.0) grade = '7';
+    else if (avgWins >= 6.0) grade = '6';
+    else if (avgWins >= 5.0) grade = '5';
+    else grade = '4';
 
     return {
       grade,

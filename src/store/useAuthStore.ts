@@ -107,11 +107,9 @@ export const extractFirstName = (fullName: string): string => {
 };
 
 // Select a premium avatar based on indexing
-const PREMIUM_AVATARS = [
-  '🏈', '🏆', '🧢', '📋', '🤖', '🥇', '👑', '🧙‍♂️'
-];
+const PREMIUM_AVATARS: string[] = [];
 export const getRandomPremiumAvatar = () => {
-  return PREMIUM_AVATARS[Math.floor(Math.random() * PREMIUM_AVATARS.length)];
+  return '';
 };
 
 export const useAuthStore = create<AuthState>((set, get) => {
@@ -139,7 +137,7 @@ export const useAuthStore = create<AuthState>((set, get) => {
         email: 'lou.bradstafford@gmail.com',
         name: '@Brad',
         firstName: 'Brad',
-        avatarUrl: '👑',
+        avatarUrl: '',
         provider: 'apple', // CEO is logged in via Apple by default
         preferences: {
           scoring: 'Half-PPR',
@@ -150,19 +148,19 @@ export const useAuthStore = create<AuthState>((set, get) => {
       };
 
       const seedBots: { [email: string]: RegisteredUser } = {
-        'andy@mockmax.com': { email: 'andy@mockmax.com', passwordHash: 'andy_pass', name: '@Andy_Coach', firstName: 'Andy', avatarUrl: '🧢', preferences: { scoring: 'Half-PPR', draftPos: 2, draftStrategy: 'Balanced' } },
-        'mike@mockmax.com': { email: 'mike@mockmax.com', passwordHash: 'mike_pass', name: '@Mike_Guru', firstName: 'Mike', avatarUrl: '🏈', preferences: { scoring: 'Half-PPR', draftPos: 3, draftStrategy: 'Hero RB' } },
-        'jason@mockmax.com': { email: 'jason@mockmax.com', passwordHash: 'jason_pass', name: '@Jason_Wizard', firstName: 'Jason', avatarUrl: '📋', preferences: { scoring: 'Half-PPR', draftPos: 4, draftStrategy: 'Late QB/TE Focus' } },
-        'sarah@mockmax.com': { email: 'sarah@mockmax.com', passwordHash: 'sarah_pass', name: '@Sarah_Maxxer', firstName: 'Sarah', avatarUrl: '👑', preferences: { scoring: 'Half-PPR', draftPos: 5, draftStrategy: 'Hero RB' } },
-        'david@mockmax.com': { email: 'david@mockmax.com', passwordHash: 'david_pass', name: '@David_Drafter', firstName: 'David', avatarUrl: '🤖', preferences: { scoring: 'Half-PPR', draftPos: 6, draftStrategy: 'Hero RB' } },
-        'jessica@mockmax.com': { email: 'jessica@mockmax.com', passwordHash: 'jessica_pass', name: '@Jessica_Dynasty', firstName: 'Jessica', avatarUrl: '🏆', preferences: { scoring: 'Half-PPR', draftPos: 7, draftStrategy: 'Balanced' } },
-        'michael@mockmax.com': { email: 'michael@mockmax.com', passwordHash: 'michael_pass', name: '@Michael_Pro', firstName: 'Michael', avatarUrl: '🥇', preferences: { scoring: 'Half-PPR', draftPos: 8, draftStrategy: 'Balanced' } },
-        'emily@mockmax.com': { email: 'emily@mockmax.com', passwordHash: 'emily_pass', name: '@Emily_Legend', firstName: 'Emily', avatarUrl: '🧢', preferences: { scoring: 'Half-PPR', draftPos: 9, draftStrategy: 'Balanced' } },
-        'james@mockmax.com': { email: 'james@mockmax.com', passwordHash: 'james_pass', name: '@James_Champ', firstName: 'James', avatarUrl: '🧙‍♂️', preferences: { scoring: 'Half-PPR', draftPos: 10, draftStrategy: 'Balanced' } },
-        'ashley@mockmax.com': { email: 'ashley@mockmax.com', passwordHash: 'ashley_pass', name: '@Ashley_Elite', firstName: 'Ashley', avatarUrl: '👑', preferences: { scoring: 'Half-PPR', draftPos: 11, draftStrategy: 'Robust RB' } },
-        'robert@mockmax.com': { email: 'robert@mockmax.com', passwordHash: 'robert_pass', name: '@Robert_Stats', firstName: 'Robert', avatarUrl: '🏈', preferences: { scoring: 'Half-PPR', draftPos: 12, draftStrategy: 'Balanced' } },
-        'sophia@mockmax.com': { email: 'sophia@mockmax.com', passwordHash: 'sophia_pass', name: '@Sophia_ZeroRB', firstName: 'Sophia', avatarUrl: '👑', preferences: { scoring: 'Half-PPR', draftPos: 8, draftStrategy: 'Zero RB' } },
-        'william@mockmax.com': { email: 'william@mockmax.com', passwordHash: 'william_pass', name: '@William_Premium', firstName: 'William', avatarUrl: '🤖', preferences: { scoring: 'Half-PPR', draftPos: 5, draftStrategy: 'Elite QB/TE Premium' } }
+        'andy@mockmax.com': { email: 'andy@mockmax.com', passwordHash: 'andy_pass', name: '@Andy_Coach', firstName: 'Andy', avatarUrl: '', preferences: { scoring: 'Half-PPR', draftPos: 2, draftStrategy: 'Balanced' } },
+        'mike@mockmax.com': { email: 'mike@mockmax.com', passwordHash: 'mike_pass', name: '@Mike_Guru', firstName: 'Mike', avatarUrl: '', preferences: { scoring: 'Half-PPR', draftPos: 3, draftStrategy: 'Hero RB' } },
+        'jason@mockmax.com': { email: 'jason@mockmax.com', passwordHash: 'jason_pass', name: '@Jason_Wizard', firstName: 'Jason', avatarUrl: '', preferences: { scoring: 'Half-PPR', draftPos: 4, draftStrategy: 'Late QB/TE Focus' } },
+        'sarah@mockmax.com': { email: 'sarah@mockmax.com', passwordHash: 'sarah_pass', name: '@Sarah_Maxxer', firstName: 'Sarah', avatarUrl: '', preferences: { scoring: 'Half-PPR', draftPos: 5, draftStrategy: 'Hero RB' } },
+        'david@mockmax.com': { email: 'david@mockmax.com', passwordHash: 'david_pass', name: '@David_Drafter', firstName: 'David', avatarUrl: '', preferences: { scoring: 'Half-PPR', draftPos: 6, draftStrategy: 'Hero RB' } },
+        'jessica@mockmax.com': { email: 'jessica@mockmax.com', passwordHash: 'jessica_pass', name: '@Jessica_Dynasty', firstName: 'Jessica', avatarUrl: '', preferences: { scoring: 'Half-PPR', draftPos: 7, draftStrategy: 'Balanced' } },
+        'michael@mockmax.com': { email: 'michael@mockmax.com', passwordHash: 'michael_pass', name: '@Michael_Pro', firstName: 'Michael', avatarUrl: '', preferences: { scoring: 'Half-PPR', draftPos: 8, draftStrategy: 'Balanced' } },
+        'emily@mockmax.com': { email: 'emily@mockmax.com', passwordHash: 'emily_pass', name: '@Emily_Legend', firstName: 'Emily', avatarUrl: '', preferences: { scoring: 'Half-PPR', draftPos: 9, draftStrategy: 'Balanced' } },
+        'james@mockmax.com': { email: 'james@mockmax.com', passwordHash: 'james_pass', name: '@James_Champ', firstName: 'James', avatarUrl: '', preferences: { scoring: 'Half-PPR', draftPos: 10, draftStrategy: 'Balanced' } },
+        'ashley@mockmax.com': { email: 'ashley@mockmax.com', passwordHash: 'ashley_pass', name: '@Ashley_Elite', firstName: 'Ashley', avatarUrl: '', preferences: { scoring: 'Half-PPR', draftPos: 11, draftStrategy: 'Robust RB' } },
+        'robert@mockmax.com': { email: 'robert@mockmax.com', passwordHash: 'robert_pass', name: '@Robert_Stats', firstName: 'Robert', avatarUrl: '', preferences: { scoring: 'Half-PPR', draftPos: 12, draftStrategy: 'Balanced' } },
+        'sophia@mockmax.com': { email: 'sophia@mockmax.com', passwordHash: 'sophia_pass', name: '@Sophia_ZeroRB', firstName: 'Sophia', avatarUrl: '', preferences: { scoring: 'Half-PPR', draftPos: 8, draftStrategy: 'Zero RB' } },
+        'william@mockmax.com': { email: 'william@mockmax.com', passwordHash: 'william_pass', name: '@William_Premium', firstName: 'William', avatarUrl: '', preferences: { scoring: 'Half-PPR', draftPos: 5, draftStrategy: 'Elite QB/TE Premium' } }
       };
 
       try {
@@ -174,7 +172,7 @@ export const useAuthStore = create<AuthState>((set, get) => {
             passwordHash: 'brad_pass',
             name: '@Brad',
             firstName: 'Brad',
-            avatarUrl: '👑',
+            avatarUrl: '',
             preferences: { scoring: 'Half-PPR', draftPos: 1, draftStrategy: 'Hero RB' },
             phoneNumber: '502-216-6336'
           },
@@ -183,7 +181,7 @@ export const useAuthStore = create<AuthState>((set, get) => {
             passwordHash: 'social_bypass_apple',
             name: '@Brad',
             firstName: 'Brad',
-            avatarUrl: '👑',
+            avatarUrl: '',
             preferences: { scoring: 'Half-PPR', draftPos: 1, draftStrategy: 'Hero RB' },
             phoneNumber: '502-216-6336'
           },
@@ -192,7 +190,7 @@ export const useAuthStore = create<AuthState>((set, get) => {
             passwordHash: 'social_bypass_google',
             name: '@Brad',
             firstName: 'Brad',
-            avatarUrl: '👑',
+            avatarUrl: '',
             preferences: { scoring: 'Half-PPR', draftPos: 1, draftStrategy: 'Hero RB' },
             phoneNumber: '502-216-6336'
           },
@@ -271,7 +269,7 @@ export const useAuthStore = create<AuthState>((set, get) => {
       // Generate a unique, deterministic mock email address from the Coach Name to prevent duplicates
       const cleanedName = name.toLowerCase().replace(/[^a-z0-9]/g, '');
       const email = `${cleanedName}.${provider}@mockmax.com`;
-      const avatarUrl = provider === 'google' ? '🤖' : '👑';
+      const avatarUrl = '';
 
       // Check if this user is already registered in our device store database
       const existingRegisteredUser = registeredUsers[email];

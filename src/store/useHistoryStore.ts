@@ -230,7 +230,7 @@ export const useHistoryStore = create<HistoryState>((set, get) => ({
     const avgWins = Array(setup.leagueSize).fill(0);
     const avgLosses = Array(setup.leagueSize).fill(0);
     const playoffChances = Array(setup.leagueSize).fill(0);
-    const grades = Array(setup.leagueSize).fill('B');
+    const grades = Array(setup.leagueSize).fill('8');
     
     for (let i = 0; i < setup.leagueSize; i++) {
       const w = wins[i] / simCount;
@@ -238,12 +238,13 @@ export const useHistoryStore = create<HistoryState>((set, get) => ({
       avgLosses[i] = Number((numWeeks - w).toFixed(1));
       playoffChances[i] = Math.round((playoffCounts[i] / simCount) * 100);
       
-      if (w >= 10.0) grades[i] = 'A+';
-      else if (w >= 9.0) grades[i] = 'A';
-      else if (w >= 8.0) grades[i] = 'B+';
-      else if (w >= 7.0) grades[i] = 'B';
-      else if (w >= 6.0) grades[i] = 'C';
-      else grades[i] = 'D';
+      if (w >= 10.0) grades[i] = '10';
+      else if (w >= 9.0) grades[i] = '9';
+      else if (w >= 8.0) grades[i] = '8';
+      else if (w >= 7.0) grades[i] = '7';
+      else if (w >= 6.0) grades[i] = '6';
+      else if (w >= 5.0) grades[i] = '5';
+      else grades[i] = '4';
     }
     
     const valueScores = Array(setup.leagueSize).fill(0);
@@ -285,15 +286,23 @@ export const useHistoryStore = create<HistoryState>((set, get) => ({
         wins: isUser ? userGradeResult.projectedWins : avgWins[idx],
         losses: isUser ? userGradeResult.projectedLosses : avgLosses[idx],
         playoffChance: isUser ? userGradeResult.playoffChance : playoffChances[idx],
-        roster: teamRosterPlayers[idx].map(p => ({
-          name: p.name,
-          position: p.position,
-          rank: p.rank,
-          adp: p.adp,
-          projectedPoints: p.projectedPoints,
-          espnId: p.espnId,
-          bye: p.bye
-        }))
+        roster: teamRosterPlayers[idx].map(p => {
+          const pickObj = draftHistory.find(h => h.player.name === p.name);
+          const pickInRound = pickObj ? (pickObj.pickNumber - (pickObj.round - 1) * setup.leagueSize) : 1;
+          const formattedPick = `${pickObj ? pickObj.round : 1}.${String(pickInRound).padStart(2, '0')}`;
+          return {
+            name: p.name,
+            position: p.position,
+            team: p.team || 'FA',
+            rank: p.rank,
+            adp: p.adp,
+            projectedPoints: p.projectedPoints,
+            espnId: p.espnId,
+            bye: p.bye,
+            pick: formattedPick,
+            round: pickObj ? pickObj.round : 1
+          };
+        })
       };
     });
 
@@ -306,6 +315,7 @@ export const useHistoryStore = create<HistoryState>((set, get) => ({
       projectedWins: userGradeResult.projectedWins,
       projectedLosses: userGradeResult.projectedLosses,
       userPosition: setup.userPosition,
+      isManual: true,
       leagueSize: setup.leagueSize,
       opponentStyle: setup.opponentStyle,
       leagueFormat: setup.leagueFormat,

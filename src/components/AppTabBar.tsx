@@ -1,5 +1,5 @@
 import React from 'react';
-import { StyleSheet, View, Text, Pressable, Platform } from 'react-native';
+import { StyleSheet, View, Text, Pressable, Platform, Animated } from 'react-native';
 import { useRouter, usePathname } from 'expo-router';
 import Svg, { Path, Circle, Rect, G } from 'react-native-svg';
 import { Colors, Fonts, useColors } from '@/constants/theme';
@@ -18,7 +18,8 @@ function TabItem({ label, isActive, onPress, icon }: TabItemProps) {
     <Pressable
       style={({ pressed }) => [
         styles.tabCell,
-        pressed && styles.tabCellPressed
+        pressed && styles.tabCellPressed,
+        !isActive && { opacity: 0.6 }
       ]}
       onPress={onPress}
       hitSlop={{ top: 10, bottom: 10, left: 8, right: 8 }}
@@ -34,10 +35,21 @@ function TabItem({ label, isActive, onPress, icon }: TabItemProps) {
   );
 }
 
-export default function AppTabBar() {
+export default function AppTabBar({ visible = true }: { visible?: boolean }) {
   const router = useRouter();
   const pathname = usePathname();
   const Colors = useColors();
+
+  const visibleAnim = React.useRef(new Animated.Value(0)).current;
+
+  React.useEffect(() => {
+    Animated.spring(visibleAnim, {
+      toValue: visible ? 0 : 100, // Slide down 100px when hidden
+      useNativeDriver: true,
+      tension: 50,
+      friction: 8,
+    }).start();
+  }, [visible]);
 
   const triggerHaptic = async () => {
     if (Platform.OS !== 'web') {
@@ -78,7 +90,7 @@ export default function AppTabBar() {
   );
 
   return (
-    <View style={styles.wrapper}>
+    <Animated.View style={[styles.wrapper, { transform: [{ translateY: visibleAnim }] }]}>
       {/* Floating Glassmorphic bar */}
       <View style={styles.container}>
         {/* 1. HOME TAB */}
@@ -90,7 +102,7 @@ export default function AppTabBar() {
             <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
               <Path
                 d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"
-                fill={pathname === '/' ? Colors.primaryAccent : Colors.inactiveAccent}
+                fill={Colors.primaryAccent}
               />
             </Svg>
           }
@@ -101,7 +113,7 @@ export default function AppTabBar() {
           label="MOCK"
           isActive={pathname.startsWith('/wizard')}
           onPress={() => handleNavigation('/wizard/setup')}
-          icon={renderDraftIcon(pathname.startsWith('/wizard') ? Colors.primaryAccent : Colors.inactiveAccent)}
+          icon={renderDraftIcon(Colors.primaryAccent)}
         />
 
         {/* 3. RANKINGS TAB */}
@@ -113,7 +125,7 @@ export default function AppTabBar() {
             <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
               <Path
                 d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"
-                fill={pathname === '/rankings' ? Colors.primaryAccent : Colors.inactiveAccent}
+                fill={Colors.primaryAccent}
               />
             </Svg>
           }
@@ -128,7 +140,7 @@ export default function AppTabBar() {
             <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
               <Path
                 d="M20 2H4c-1.1 0-1.99.9-1.99 2L2 22l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zM6 9h12v2H6V9zm8 5H6v-2h8v2zm4-6H6V6h12v2z"
-                fill={pathname === '/news' ? Colors.primaryAccent : Colors.inactiveAccent}
+                fill={Colors.primaryAccent}
               />
             </Svg>
           }
@@ -143,13 +155,13 @@ export default function AppTabBar() {
             <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
               <Path
                 d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"
-                fill={pathname === '/recap' ? Colors.primaryAccent : Colors.inactiveAccent}
+                fill={Colors.primaryAccent}
               />
             </Svg>
           }
         />
       </View>
-    </View>
+    </Animated.View>
   );
 }
 
@@ -173,7 +185,7 @@ function createStyles(Colors: typeof import('@/constants/theme').LightColors) {
       maxWidth: 600,
       height: 64,
       borderRadius: 32,
-      backgroundColor: Colors.surface,
+      backgroundColor: Colors.deepGraphiteCharcoal,
       borderWidth: 1,
       borderColor: Colors.glassBorder,
       shadowColor: Colors.shadows.shadowColor,
@@ -211,7 +223,7 @@ function createStyles(Colors: typeof import('@/constants/theme').LightColors) {
       fontFamily: Fonts.stats,
       fontSize: 8,
       fontWeight: 'bold',
-      color: Colors.inactiveAccent, // High-contrast slate meeting WCAG AAA
+      color: Colors.primaryAccent, // High-contrast Chalk White
       letterSpacing: 0.5,
     },
     tabLabelActive: {

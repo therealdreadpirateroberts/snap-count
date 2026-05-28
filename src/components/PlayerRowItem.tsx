@@ -2,7 +2,6 @@ import React from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { useColors, Fonts, Spacing, LightColors, DarkColors } from '@/constants/theme';
 import { Player } from '@/store/mockData';
-import { PlayerHeadshot } from '@/components/PlayerHeadshot';
 import Svg, { Path } from 'react-native-svg';
 
 import { useThemeStore } from '@/store/useThemeStore';
@@ -37,7 +36,10 @@ export default function PlayerRowItem({
   const activeStyles = isDark ? darkStyles : lightStyles;
 
   return (
-    <View style={activeStyles.rankingsRowItem}>
+    <View style={[
+      activeStyles.rankingsRowItem,
+      { borderLeftColor: Colors.positions[player.position as keyof typeof Colors.positions] || Colors.chromeSilver }
+    ]}>
       {showRosterIndex && rosterIndex !== undefined && (
         <View style={activeStyles.rosterCardIndex}>
           <Text style={activeStyles.rosterCardIndexText}>{rosterIndex}</Text>
@@ -46,17 +48,25 @@ export default function PlayerRowItem({
       {showRank && (
         <Text style={activeStyles.rankingsRowRank}>{player.rank}</Text>
       )}
-      <PlayerHeadshot name={player.name} position={player.position} team={player.team} style={activeStyles.rankingsRowHeadshot} />
+      <View style={[
+        activeStyles.posBadge,
+        {
+          backgroundColor: Colors.positions[player.position as keyof typeof Colors.positions] || Colors.chromeSilver,
+          borderColor: Colors.positions[player.position as keyof typeof Colors.positions] || Colors.chromeSilver
+        }
+      ]}>
+        <Text style={activeStyles.posBadgeText}>
+          {player.position === 'DST' ? player.position : player.posRank}
+        </Text>
+      </View>
       <View style={activeStyles.rankingsRowInfo}>
         <Text style={activeStyles.rankingsRowName} numberOfLines={1}>{player.name}</Text>
-        <Text style={activeStyles.rankingsRowMeta}>
-          <Text style={{ color: Colors.positions[player.position as keyof typeof Colors.positions] || Colors.primaryAccent, fontWeight: 'bold' }}>{player.position === 'DST' ? player.position : player.posRank}</Text> · {player.team} · Bye {player.bye}
-        </Text>
+        <Text style={activeStyles.rankingsRowMeta}>{player.team} · Bye {player.bye}</Text>
       </View>
       {showStar && onToggleStar && (
         <Pressable style={activeStyles.starBtnSmall} onPress={onToggleStar}>
-          <Svg width={16} height={16} viewBox="0 0 24 24" fill={isStarred ? "#fbbf24" : "none"}>
-            <Path d="M12 17.27L18.18 21L16.54 13.97L22 9.24L14.81 8.62L12 2L9.19 8.62L2 9.24L7.46 13.97L5.82 21L12 17.27Z" stroke={isStarred ? "#fbbf24" : "#94a3b8"} strokeWidth={2} />
+          <Svg width={16} height={16} viewBox="0 0 24 24" fill={isStarred ? Colors.hofYellow : "none"}>
+            <Path d="M12 17.27L18.18 21L16.54 13.97L22 9.24L14.81 8.62L12 2L9.19 8.62L2 9.24L7.46 13.97L5.82 21L12 17.27Z" stroke={isStarred ? Colors.hofYellow : Colors.chromeSilver} strokeWidth={2} />
           </Svg>
         </Pressable>
       )}
@@ -78,9 +88,10 @@ function createStyles(Colors: typeof LightColors) {
     rankingsRowItem: {
       flexDirection: 'row',
       alignItems: 'center',
-      backgroundColor: Colors.surface,
-      borderColor: Colors.coltsNavyLight,
+      backgroundColor: Colors.primaryAccent,
+      borderColor: Colors.chromeSilver,
       borderWidth: 1,
+      borderLeftWidth: 4,
       borderRadius: 8,
       paddingVertical: 6,
       paddingHorizontal: Spacing.two,
@@ -90,15 +101,24 @@ function createStyles(Colors: typeof LightColors) {
     rankingsRowRank: {
       fontFamily: Fonts.stats,
       fontSize: 12,
-      color: '#94a3b8',
-      width: 20,
+      color: Colors.secondaryAccent,
+      width: 22,
       textAlign: 'center',
       fontWeight: 'bold',
     },
-    rankingsRowHeadshot: {
-      width: 32,
-      height: 32,
-      borderRadius: 16,
+    posBadge: {
+      width: 34,
+      height: 20,
+      justifyContent: 'center',
+      alignItems: 'center',
+      borderRadius: 4,
+      borderWidth: 1,
+    },
+    posBadgeText: {
+      fontFamily: Fonts.body,
+      fontSize: 9,
+      fontWeight: 'bold',
+      color: Colors.primaryAccent,
     },
     rankingsRowInfo: {
       flex: 1,
@@ -108,7 +128,7 @@ function createStyles(Colors: typeof LightColors) {
       fontFamily: Fonts.body,
       fontSize: 13,
       fontWeight: 'bold',
-      color: Colors.primaryAccent,
+      color: Colors.obsidianBlack,
     },
     rankingsRowMeta: {
       fontFamily: Fonts.body,
@@ -122,8 +142,8 @@ function createStyles(Colors: typeof LightColors) {
       alignItems: 'center',
     },
     draftBtnSmall: {
-      backgroundColor: Colors.hofYellow,
-      borderColor: Colors.hofYellow,
+      backgroundColor: Colors.pylonOrange,
+      borderColor: Colors.pylonOrange,
       borderWidth: 1,
       borderRadius: 6,
       paddingHorizontal: 10,
@@ -132,15 +152,15 @@ function createStyles(Colors: typeof LightColors) {
       alignItems: 'center',
     },
     draftBtnDisabled: {
-      backgroundColor: Colors.surfaceLifted,
-      borderColor: Colors.surfaceLifted,
+      backgroundColor: Colors.liftedCharcoal,
+      borderColor: Colors.liftedCharcoal,
       opacity: 0.4,
     },
     draftBtnTextSmall: {
       fontFamily: Fonts.headings,
       fontSize: 11,
       fontWeight: 'bold',
-      color: '#000000',
+      color: Colors.primaryAccent,
     },
     draftBtnTextDisabled: {
       color: Colors.secondaryAccent,
@@ -149,11 +169,11 @@ function createStyles(Colors: typeof LightColors) {
       width: 24,
       height: 24,
       borderRadius: 12,
-      backgroundColor: Colors.background,
+      backgroundColor: Colors.obsidianBlack,
       justifyContent: 'center',
       alignItems: 'center',
       borderWidth: 1,
-      borderColor: Colors.coltsNavyLight,
+      borderColor: Colors.chromeSilver,
     },
     rosterCardIndexText: {
       fontFamily: Fonts.stats,

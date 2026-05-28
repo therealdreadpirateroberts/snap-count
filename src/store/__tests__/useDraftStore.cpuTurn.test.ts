@@ -29,8 +29,8 @@ describe('useDraftStore.cpuTurn progression loop', () => {
     expect(useDraftStore.getState().thinkingCpuName).not.toBe('');
     expect(onUserTurnReached).not.toHaveBeenCalled();
 
-    // Advance fake timers by 450ms to fire the CPU pick
-    jest.advanceTimersByTime(450);
+    // Advance fake timers by 112ms to fire the CPU pick
+    jest.advanceTimersByTime(112);
 
     // CPU should have finished thinking and drafted a player
     const nextState = useDraftStore.getState();
@@ -72,22 +72,22 @@ describe('useDraftStore.cpuTurn progression loop', () => {
 
     // Simulate Pick 1
     useDraftStore.getState().simulateCpuTurn(onUserTurnReached);
-    jest.advanceTimersByTime(450);
+    jest.advanceTimersByTime(112);
     expect(useDraftStore.getState().currentPick).toBe(2);
 
     // Simulate Pick 2
     useDraftStore.getState().simulateCpuTurn(onUserTurnReached);
-    jest.advanceTimersByTime(450);
+    jest.advanceTimersByTime(112);
     expect(useDraftStore.getState().currentPick).toBe(3);
 
     // Simulate Pick 3
     useDraftStore.getState().simulateCpuTurn(onUserTurnReached);
-    jest.advanceTimersByTime(450);
+    jest.advanceTimersByTime(112);
     expect(useDraftStore.getState().currentPick).toBe(4);
 
     // Simulate Pick 4
     useDraftStore.getState().simulateCpuTurn(onUserTurnReached);
-    jest.advanceTimersByTime(450);
+    jest.advanceTimersByTime(112);
     expect(useDraftStore.getState().currentPick).toBe(5);
 
     // Now it should be the user's turn (pick 5)

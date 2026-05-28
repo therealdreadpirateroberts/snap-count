@@ -20,6 +20,7 @@
     "@react-navigation/bottom-tabs": "^7.15.5",
     "@react-navigation/elements": "^2.9.10",
     "@react-navigation/native": "^7.1.33",
+    "@untitledui/icons": "^0.0.22",
     "edge-tts-universal": "^1.4.0",
     "expo": "~54.0.0",
     "expo-av": "^16.0.8",

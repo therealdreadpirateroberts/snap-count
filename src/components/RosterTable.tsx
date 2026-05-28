@@ -3,6 +3,7 @@ import { StyleSheet, View, Text, Pressable, Image } from 'react-native';
 import { Colors, Fonts, Spacing, useColors, LightColors, DarkColors } from '@/constants/theme';
 import { useThemeStore } from '@/store/useThemeStore';
 import { getTeamLogoUrl } from '@/store/mockData';
+import { PlayerHeadshot } from '@/components/PlayerHeadshot';
 
 // Helper to format player names cleanly to First Initial + Last Name
 const getDisplayName = (name: string) => {
@@ -18,16 +19,6 @@ const getDisplayName = (name: string) => {
   return name;
 };
 
-// Map players to direct ESPN player IDs for premium headshots
-const getPlayerHeadshotUrl = (espnId: number | null, position: string, team?: string) => {
-  if (position === 'DST' && team) {
-    return getTeamLogoUrl(team);
-  }
-  if (espnId) {
-    return `https://a.espncdn.com/i/headshots/nfl/players/full/${espnId}.png`;
-  }
-  return `https://a.espncdn.com/combiner/i?img=/i/headshots/nfl/players/full/default.png&w=350&h=254`;
-};
 
 // Format number with commas
 const formatNumber = (num: number) => {
@@ -334,8 +325,11 @@ export default function RosterTable({ roster, setup, draftHistory, userTeamName 
             </View>
             {slot.player ? (
               <>
-                <Image
-                  source={{ uri: getPlayerHeadshotUrl(slot.player.espnId, slot.player.position, slot.player.team) }}
+                <PlayerHeadshot
+                  name={slot.player.name}
+                  position={slot.player.position}
+                  team={slot.player.team}
+                  espnId={slot.player.espnId}
                   style={activeStyles.rankingsRowHeadshot}
                 />
                 <View style={activeStyles.rankingsRowInfo}>
@@ -404,8 +398,11 @@ export default function RosterTable({ roster, setup, draftHistory, userTeamName 
             </View>
             {slot.player ? (
               <>
-                <Image
-                  source={{ uri: getPlayerHeadshotUrl(slot.player.espnId, slot.player.position, slot.player.team) }}
+                <PlayerHeadshot
+                  name={slot.player.name}
+                  position={slot.player.position}
+                  team={slot.player.team}
+                  espnId={slot.player.espnId}
                   style={activeStyles.rankingsRowHeadshot}
                 />
                 <View style={activeStyles.rankingsRowInfo}>
@@ -436,7 +433,7 @@ export default function RosterTable({ roster, setup, draftHistory, userTeamName 
         onPress={() => setShowAdvanced(!showAdvanced)}
       >
         <Text style={activeStyles.advancedToggleBtnText}>
-          {showAdvanced ? '🔽 HIDE ADVANCED ROSTER METRICS' : '➕ ANALYZE ADVANCED ROSTER METRICS'}
+          {showAdvanced ? 'HIDE ADVANCED ROSTER METRICS' : 'ANALYZE ADVANCED ROSTER METRICS'}
         </Text>
       </Pressable>
 
@@ -512,8 +509,8 @@ function createStyles(Colors: typeof LightColors) {
     rankingsRowItem: {
       flexDirection: 'row',
       alignItems: 'center',
-      backgroundColor: Colors.surface,
-      borderColor: Colors.coltsNavyLight,
+      backgroundColor: Colors.deepGraphiteCharcoal,
+      borderColor: Colors.chromeSilver,
       borderWidth: 1,
       borderRadius: 8,
       paddingVertical: 6,
@@ -548,7 +545,7 @@ function createStyles(Colors: typeof LightColors) {
       width: 32,
       height: 32,
       borderRadius: 16,
-      backgroundColor: Colors.surfaceLifted,
+      backgroundColor: Colors.liftedCharcoal,
     },
     rankingsRowInfo: {
       flex: 1,
@@ -593,18 +590,18 @@ function createStyles(Colors: typeof LightColors) {
       fontStyle: 'italic',
     },
     advancedToggleBtn: {
-      borderColor: Colors.coltsNavyLight,
+      borderColor: Colors.chromeSilver,
       borderWidth: 1,
       borderRadius: 8,
-      backgroundColor: Colors.surface,
+      backgroundColor: Colors.deepGraphiteCharcoal,
       paddingVertical: 12,
       alignItems: 'center',
       justifyContent: 'center',
       marginTop: Spacing.three,
     },
     advancedToggleBtnActive: {
-      borderColor: Colors.coltsNavyLight,
-      backgroundColor: Colors.surfaceLifted,
+      borderColor: Colors.chromeSilver,
+      backgroundColor: Colors.liftedCharcoal,
     },
     advancedToggleBtnText: {
       fontFamily: Fonts.headings,
@@ -613,8 +610,8 @@ function createStyles(Colors: typeof LightColors) {
       letterSpacing: 0.5,
     },
     advancedMetricsCard: {
-      backgroundColor: Colors.surface,
-      borderColor: Colors.coltsNavyLight,
+      backgroundColor: Colors.deepGraphiteCharcoal,
+      borderColor: Colors.chromeSilver,
       borderWidth: 1,
       borderRadius: 12,
       padding: Spacing.three,
@@ -635,8 +632,8 @@ function createStyles(Colors: typeof LightColors) {
     },
     advancedCell: {
       flex: 1,
-      backgroundColor: Colors.surfaceLifted,
-      borderColor: Colors.coltsNavyLight,
+      backgroundColor: Colors.liftedCharcoal,
+      borderColor: Colors.chromeSilver,
       borderWidth: 0.5,
       borderRadius: 8,
       padding: 8,
@@ -669,8 +666,8 @@ function createStyles(Colors: typeof LightColors) {
     },
     metricStatsCard: {
       flex: 1,
-      backgroundColor: Colors.surfaceLifted,
-      borderColor: Colors.coltsNavyLight,
+      backgroundColor: Colors.liftedCharcoal,
+      borderColor: Colors.chromeSilver,
       borderWidth: 0.5,
       borderRadius: 8,
       padding: 10,

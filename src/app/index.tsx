@@ -1,5 +1,5 @@
-import React from 'react';
-import { StyleSheet, View, Text, ScrollView, useWindowDimensions, Platform, Pressable } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { StyleSheet, View, Text, ScrollView, useWindowDimensions, Platform, Pressable, Animated } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useColors, Fonts } from '@/constants/theme';
@@ -9,6 +9,7 @@ import BackgroundTexture from '@/components/BackgroundTexture';
 import FeedCard from '@/components/FeedCard';
 import { useAuthStore } from '@/store/useAuthStore';
 import { usePlayerStore } from '@/store/usePlayerStore';
+import { ADMIN_ALLOWLIST } from '@/constants/admin';
 import OnboardingScreen from '@/components/OnboardingScreen';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import Svg, { Defs, RadialGradient, Stop, Circle } from 'react-native-svg';
@@ -21,10 +22,48 @@ function LandingScreen() {
   const { width } = useWindowDimensions();
   const isDesktop = Platform.OS === 'web' && width >= 1024;
 
-  const {
-    featuredSlot1Key,
-    homepageTileCap
-  } = usePlayerStore();
+  // Looping breathing animation for the action button's gold outline
+  const pulseAnim = useRef(new Animated.Value(0.4)).current;
+
+  const [tabBarVisible, setTabBarVisible] = useState(true);
+  const scrollTimeoutRef = useRef<any>(null);
+
+  const handleScroll = () => {
+    setTabBarVisible(false);
+    if (scrollTimeoutRef.current) {
+      clearTimeout(scrollTimeoutRef.current);
+    }
+    scrollTimeoutRef.current = setTimeout(() => {
+      setTabBarVisible(true);
+    }, 300); // Elegantly reappear 300ms after scrolling stops
+  };
+
+  useEffect(() => {
+    return () => {
+      if (scrollTimeoutRef.current) {
+        clearTimeout(scrollTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    const pulse = Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseAnim, {
+          toValue: 1.0,
+          duration: 1200,
+          useNativeDriver: true,
+        }),
+        Animated.timing(pulseAnim, {
+          toValue: 0.4,
+          duration: 1200,
+          useNativeDriver: true,
+        }),
+      ])
+    );
+    pulse.start();
+    return () => pulse.stop();
+  }, [pulseAnim]);
 
   if (!user) {
     return <OnboardingScreen />;
@@ -50,15 +89,7 @@ function LandingScreen() {
       route: '/rankings',
       graphicType: 'sheets' as const
     },
-    {
-      id: 'leaderboard-stats',
-      kicker: 'COACH GRADES & ANOMALIES',
-      title: 'HISTORICAL DRAFT LEADERBOARDS',
-      description: 'Review your past drafts. Track your GPA value scores over time, study your highest-value draft selections, and analyze positional arbitrage variance graphs.',
-      btnLabel: 'VIEW STATS',
-      route: '/leaderboard',
-      graphicType: 'leaderboard' as const
-    },
+
     {
       id: 'trade-center',
       kicker: 'DRAFT TRADE SUITE',
@@ -79,11 +110,11 @@ function LandingScreen() {
     },
     {
       id: 'simulation-lab',
-      kicker: 'EXECUTIVE SYSTEM HARNESS',
-      title: 'MONTE CARLO SIMULATIONS LAB',
-      description: 'Run high-frequency simulations to optimize bot strategies. Access live telemetry dashboards and bot crawl logs instantly.',
-      btnLabel: 'SIMULATION HARNESS',
-      route: '/qa-simulation',
+      kicker: 'ALGO MANAGEMENT',
+      title: 'BOT TRAINING & PARAMETERS',
+      description: 'Run reinforcement training sessions to evolve bot strategy coefficients and inspect parameter baselines.',
+      btnLabel: 'ALGO ADMIN',
+      route: '/algo-admin',
       graphicType: 'swarm' as const
     },
     {
@@ -109,7 +140,7 @@ function LandingScreen() {
       kicker: 'COACH & NOTIFICATION CONFIG',
       title: 'USER PREFERENCES & CONTROL CENTER',
       description: 'Configure system options, theme switches, and inbox notifications. Manage permissions, user sessions, and reset data safely.',
-      btnLabel: 'ACCOUNT SETTINGS',
+      btnLabel: 'ACCOUNT',
       route: '/settings',
       graphicType: 'news' as const
     },
@@ -124,17 +155,19 @@ function LandingScreen() {
     }
   ];
 
-  // Dynamic re-ordering based on featuredSlot1Key
-  const sortedCoreCards = [...coreCards];
-  const promotedIndex = sortedCoreCards.findIndex(card => card.id === featuredSlot1Key);
-  if (promotedIndex > 0) {
-    const [promotedCard] = sortedCoreCards.splice(promotedIndex, 1);
-    sortedCoreCards.unshift(promotedCard);
-  }
+  // Cap at 10 (Decision 7)
+  const activeTileCap = 10;
+  
+  // Only show Algo Admin card to registered admins
+  const isAdmin = user && ADMIN_ALLOWLIST.includes(user.email);
+  const visibleCards = coreCards.filter(card => {
+    if (card.id === 'simulation-lab') {
+      return isAdmin;
+    }
+    return true;
+  });
 
-  // Cap at dynamically configured tile cap (default 10)
-  const activeTileCap = homepageTileCap !== undefined ? homepageTileCap : 10;
-  const homepageTiles = sortedCoreCards.slice(0, activeTileCap).map(card => ({
+  const homepageTiles = visibleCards.slice(0, activeTileCap).map(card => ({
     type: 'core' as const,
     data: card
   }));
@@ -162,41 +195,42 @@ function LandingScreen() {
 
   const renderSidebar = () => {
     return (
-      <View style={[styles.sidebarCard, { backgroundColor: themedColors.surface, borderColor: themedColors.coltsNavyLight }]}>
-        <Text style={[styles.sidebarTitle, { color: themedColors.primaryAccent }]}>MOCK MAXXING</Text>
-        <Text style={[styles.sidebarDesc, { color: themedColors.secondaryAccent }]}>Real-time evolved bot profiles, analytics, and custom cheat sheets</Text>
-        <View style={[styles.sidebarDivider, { backgroundColor: themedColors.coltsNavyLight }]} />
+      <View style={[styles.sidebarCard, { backgroundColor: themedColors.primaryAccent, borderColor: themedColors.midGray }]}>
+        <Text style={[styles.sidebarTitle, { color: themedColors.obsidianBlack }]}>MOCK MAXXING</Text>
+        <Text style={[styles.sidebarDesc, { color: themedColors.slate }]}>Real-time evolved bot profiles, analytics, and custom cheat sheets</Text>
+        <View style={[styles.sidebarDivider, { backgroundColor: themedColors.midGray }]} />
         <View style={styles.sidebarMenu}>
-          <Text style={[styles.sidebarMenuItemActive, { color: themedColors.primaryAccent }]}>🏠 OVERVIEW</Text>
-          <Pressable onPress={() => router.push('/wizard/setup')}><Text style={[styles.sidebarMenuItem, { color: themedColors.secondaryAccent }]}>🏈 MOCK DRAFT WIZARD</Text></Pressable>
-          <Pressable onPress={() => router.push('/rankings')}><Text style={[styles.sidebarMenuItem, { color: themedColors.secondaryAccent }]}>📋 ADP CHEAT SHEETS</Text></Pressable>
-          <Pressable onPress={() => router.push('/leaderboard')}><Text style={[styles.sidebarMenuItem, { color: themedColors.secondaryAccent }]}>🏆 DRAFT LEADERBOARD</Text></Pressable>
-          <Pressable onPress={() => router.push('/qa-simulation')}><Text style={[styles.sidebarMenuItem, { color: themedColors.secondaryAccent }]}>🧪 SIMULATION HARNESS</Text></Pressable>
-          <Pressable onPress={() => router.push('/settings')}><Text style={[styles.sidebarMenuItem, { color: themedColors.secondaryAccent }]}>⚙️ ACCOUNT CONFIG</Text></Pressable>
+          <Text style={[styles.sidebarMenuItemActive, { color: themedColors.obsidianBlack }]}>OVERVIEW</Text>
+          <Pressable onPress={() => router.push('/wizard/setup')}><Text style={[styles.sidebarMenuItem, { color: themedColors.slate }]}>MOCK DRAFT WIZARD</Text></Pressable>
+          <Pressable onPress={() => router.push('/rankings')}><Text style={[styles.sidebarMenuItem, { color: themedColors.slate }]}>ADP CHEAT SHEETS</Text></Pressable>
+          {isAdmin && (
+            <Pressable onPress={() => router.push('/algo-admin')}><Text style={[styles.sidebarMenuItem, { color: themedColors.slate }]}>ALGO ADMIN</Text></Pressable>
+          )}
+          <Pressable onPress={() => router.push('/settings')}><Text style={[styles.sidebarMenuItem, { color: themedColors.slate }]}>ACCOUNT</Text></Pressable>
         </View>
       </View>
     );
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: themedColors.background }]}>
-      <BackgroundTexture />
+    <View style={[styles.container, { backgroundColor: themedColors.primaryAccent }]}>
+      <BackgroundTexture backgroundColor={themedColors.primaryAccent} />
 
       {/* Decorative Radial Stadium Lights Glows */}
       <View style={StyleSheet.absoluteFillObject} pointerEvents="none">
         <Svg width="100%" height="100%">
           <Defs>
-            <RadialGradient id="coltsBlueGlow" cx="15%" cy="30%" rx="45%" ry="45%" fx="15%" fy="30%">
-              <Stop offset="0%" stopColor={themedColors.coltsBlueGlow} />
+            <RadialGradient id="deepFieldGreenGlow" cx="15%" cy="30%" rx="45%" ry="45%" fx="15%" fy="30%">
+              <Stop offset="0%" stopColor={themedColors.deepFieldGreenGlow} />
               <Stop offset="100%" stopColor="rgba(248, 250, 252, 0)" />
             </RadialGradient>
-            <RadialGradient id="doordashRedGlow" cx="85%" cy="70%" rx="40%" ry="40%" fx="85%" fy="70%">
-              <Stop offset="0%" stopColor={themedColors.doordashRedGlow} />
+            <RadialGradient id="pylonOrangeGlow" cx="85%" cy="70%" rx="40%" ry="40%" fx="85%" fy="70%">
+              <Stop offset="0%" stopColor={themedColors.pylonOrangeGlow} />
               <Stop offset="100%" stopColor="rgba(248, 250, 252, 0)" />
             </RadialGradient>
           </Defs>
-          <Circle cx="15%" cy="30%" r="45%" fill="url(#coltsBlueGlow)" />
-          <Circle cx="85%" cy="70%" r="50%" fill="url(#doordashRedGlow)" />
+          <Circle cx="15%" cy="30%" r="45%" fill="url(#deepFieldGreenGlow)" />
+          <Circle cx="85%" cy="70%" r="50%" fill="url(#pylonOrangeGlow)" />
         </Svg>
       </View>
 
@@ -243,101 +277,18 @@ function LandingScreen() {
                   style={styles.scrollArea}
                   contentContainerStyle={styles.scrollContentMobile}
                   showsVerticalScrollIndicator={false}
+                  onScroll={handleScroll}
+                  scrollEventThrottle={16}
                 >
                   {/* AppHeader + Greeting Banner */}
                   <View style={styles.mobileHeaderGroup}>
-                    <AppHeader isLanding={true} />
+                    <AppHeader isLanding={true} showBrandBanner={true} />
                     
                     {/* Starbucks-style personalized greeting banner */}
-                    <View style={styles.mobileGreetingBanner}>
-                      <Text style={[styles.greetingMainText, { color: themedColors.primaryAccent }]}>
+                    <View style={[styles.mobileGreetingBanner, { backgroundColor: themedColors.primaryAccent }]}>
+                      <Text style={[styles.greetingMainText, { color: themedColors.obsidianBlack }]}>
                         {((user?.firstName || 'COACH') + ", LET'S COOK.").toUpperCase()}
                       </Text>
-                    </View>
-                  </View>
-
-                  {/* DRAFT NOW Floating CTA */}
-                  <View style={styles.mobileCTAContainer}>
-                    <Pressable
-                      onPress={() => {
-                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
-                        router.push('/wizard/setup');
-                      }}
-                      style={({ pressed }) => [
-                        styles.draftNowBtn,
-                        {
-                          backgroundColor: themedColors.pylonOrange,
-                          transform: [{ scale: pressed ? 0.95 : 1 }],
-                        }
-                      ]}
-                    >
-                      <Text style={styles.draftNowText}>DRAFT NOW</Text>
-                    </Pressable>
-                  </View>
-
-                  {/* Pigskin Brown Leather Tray Content Panel */}
-                  <View style={styles.leatherTray}>
-                    <View style={styles.trayGrid}>
-                      <Pressable
-                        onPress={() => {
-                          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
-                          router.push('/rankings');
-                        }}
-                        style={({ pressed }) => [
-                          styles.trayBtn,
-                          {
-                            borderColor: themedColors.secondaryAccent,
-                            transform: [{ scale: pressed ? 0.97 : 1 }]
-                          }
-                        ]}
-                      >
-                        <Text style={[styles.trayBtnText, { color: themedColors.secondaryAccent }]}>CHEAT SHEETS</Text>
-                      </Pressable>
-                      <Pressable
-                        onPress={() => {
-                          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
-                          router.push('/leaderboard');
-                        }}
-                        style={({ pressed }) => [
-                          styles.trayBtn,
-                          {
-                            borderColor: themedColors.secondaryAccent,
-                            transform: [{ scale: pressed ? 0.97 : 1 }]
-                          }
-                        ]}
-                      >
-                        <Text style={[styles.trayBtnText, { color: themedColors.secondaryAccent }]}>LEADERBOARD</Text>
-                      </Pressable>
-                      <Pressable
-                        onPress={() => {
-                          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
-                          router.push('/news');
-                        }}
-                        style={({ pressed }) => [
-                          styles.trayBtn,
-                          {
-                            borderColor: themedColors.secondaryAccent,
-                            transform: [{ scale: pressed ? 0.97 : 1 }]
-                          }
-                        ]}
-                      >
-                        <Text style={[styles.trayBtnText, { color: themedColors.secondaryAccent }]}>NEWS</Text>
-                      </Pressable>
-                      <Pressable
-                        onPress={() => {
-                          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
-                          router.push('/settings');
-                        }}
-                        style={({ pressed }) => [
-                          styles.trayBtn,
-                          {
-                            borderColor: themedColors.secondaryAccent,
-                            transform: [{ scale: pressed ? 0.97 : 1 }]
-                          }
-                        ]}
-                      >
-                        <Text style={[styles.trayBtnText, { color: themedColors.secondaryAccent }]}>SETTINGS</Text>
-                      </Pressable>
                     </View>
                   </View>
 
@@ -350,10 +301,35 @@ function LandingScreen() {
             )}
           </View>
         </View>
+
+        {/* PERSISTENT MOCK NOW BUTTON */}
+        <Pressable 
+          style={({ pressed }) => [
+            styles.persistentMockBtn, 
+            { 
+              backgroundColor: themedColors.pylonOrange,
+              borderColor: themedColors.pylonOrange
+            },
+            pressed && styles.persistentMockBtnPressed
+          ]} 
+          onPress={() => {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy).catch(() => {});
+            router.push('/wizard/setup');
+          }}
+        >
+          <Animated.View style={[
+            styles.persistentMockBtnPulseBorder, 
+            { 
+              borderColor: themedColors.pylonOrange,
+              opacity: pulseAnim 
+            }
+          ]} />
+          <Text style={styles.persistentMockBtnText}>MOCK NOW</Text>
+        </Pressable>
       </SafeAreaView>
 
       {/* Absolute persistent mobile tab navigation */}
-      {!isDesktop && <AppTabBar />}
+      {!isDesktop && <AppTabBar visible={tabBarVisible} />}
     </View>
   );
 }
@@ -431,12 +407,12 @@ const styles = StyleSheet.create({
     fontFamily: Fonts.headings,
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#ffffff',
+    color: '#0c0c0c',
   },
   headerSubtitle: {
     fontFamily: Fonts.body,
     fontSize: 12,
-    color: '#94a3b8',
+    color: '#475569',
   },
   headerRightActions: {
     flexDirection: 'row',
@@ -498,59 +474,37 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     width: '100%',
   },
-  mobileCTAContainer: {
-    paddingHorizontal: 16,
-    marginBottom: 16,
-  },
-  draftNowBtn: {
-    height: 54,
-    borderRadius: 27,
+  persistentMockBtn: {
+    position: 'absolute',
+    bottom: Platform.OS === 'ios' ? 104 : 96,
+    right: 16,
+    width: 140,
+    height: 48,
+    borderRadius: 24,
+    borderWidth: 1.5,
     justifyContent: 'center',
     alignItems: 'center',
+    zIndex: 9999,
     shadowColor: '#000000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 5,
     elevation: 6,
+    overflow: 'hidden',
   },
-  draftNowText: {
+  persistentMockBtnPulseBorder: {
+    ...StyleSheet.absoluteFillObject,
+    borderWidth: 1.5,
+    borderRadius: 24,
+  },
+  persistentMockBtnPressed: {
+    transform: [{ scale: 0.96 }],
+    opacity: 0.95,
+  },
+  persistentMockBtnText: {
     fontFamily: Fonts.headings,
-    fontSize: 18,
-    fontWeight: '900',
-    color: '#ffffff',
-    letterSpacing: 1,
-  },
-  leatherTray: {
-    backgroundColor: '#6B3615',
-    marginHorizontal: 16,
-    marginBottom: 24,
-    borderRadius: 16,
-    padding: 24,
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 3,
-    elevation: 4,
-  },
-  trayGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-    gap: 12,
-  },
-  trayBtn: {
-    width: '47%',
-    height: 48,
-    borderWidth: 1,
-    borderRadius: 8,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: 'transparent',
-  },
-  trayBtnText: {
-    fontFamily: Fonts.headings,
-    fontSize: 13,
-    fontWeight: 'bold',
-    letterSpacing: 0.5,
+    fontSize: 14,
+    color: '#F4F5F7',
+    letterSpacing: 0.8,
   },
 });

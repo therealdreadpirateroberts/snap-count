@@ -20,11 +20,12 @@ import {
 import { useColors } from '@/constants/theme';
 import { useThemeStore } from '@/store/useThemeStore';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { Text, TextInput } from 'react-native';
+import { Text, TextInput, AppState } from 'react-native';
 import { useAuthSync } from '@/hooks/useAuthSync';
 import { useAuthStore } from '@/store/useAuthStore';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
+import { saveBotParamsNow } from '@/store/_helpers';
 
 // Prevent splash screen auto-hiding until assets are loaded
 SplashScreen.preventAutoHideAsync().catch(() => {});
@@ -48,6 +49,21 @@ export default function RootLayout() {
 
   useEffect(() => {
     initAuth();
+  }, []);
+
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', (nextAppState) => {
+      if (nextAppState === 'background') {
+        try {
+          saveBotParamsNow();
+        } catch (e) {
+          console.error('Failed to auto-save bot params on background', e);
+        }
+      }
+    });
+    return () => {
+      subscription.remove();
+    };
   }, []);
 
   useEffect(() => {
@@ -83,25 +99,23 @@ export default function RootLayout() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
         <ErrorBoundary>
-          <StatusBar style={theme === 'dark' ? 'light' : 'dark'} backgroundColor={Colors.background} />
+          <StatusBar style={theme === 'dark' ? 'light' : 'dark'} backgroundColor={Colors.obsidianBlack} />
           <Stack
             screenOptions={{
               headerShown: false,
-              contentStyle: { backgroundColor: Colors.background },
+              contentStyle: { backgroundColor: Colors.obsidianBlack },
               animation: 'fade',
             }}
           >
             <Stack.Screen name="index" />
             <Stack.Screen name="rankings" />
             <Stack.Screen name="news" />
-            <Stack.Screen name="leaderboard" />
-            <Stack.Screen name="qa-simulation" />
             <Stack.Screen name="wizard/setup" />
             <Stack.Screen name="wizard/active" />
             <Stack.Screen name="wizard/summary" />
             <Stack.Screen name="settings" />
             <Stack.Screen name="recap" />
-            <Stack.Screen name="executive-dashboard" />
+            <Stack.Screen name="algo-admin" />
           </Stack>
         </ErrorBoundary>
       </SafeAreaProvider>

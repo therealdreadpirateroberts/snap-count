@@ -20,6 +20,7 @@ import AppTabBar from '@/components/AppTabBar';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import PlayerRow from '@/components/RankingsRow';
 import MyRanksEditor from '@/components/MyRanksEditor';
+import { PlayerCardModal } from '@/components/PlayerCardModal';
 
 const triggerHaptic = async (style: Haptics.ImpactFeedbackStyle = Haptics.ImpactFeedbackStyle.Light) => {
   if (Platform.OS !== 'web') {
@@ -48,6 +49,7 @@ function RankingsScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const [positionFilter, setPositionFilter] = useState<'ALL' | 'QB' | 'RB' | 'WR' | 'TE' | 'FLEX' | 'K' | 'DST'>('ALL');
   const [isFocused, setIsFocused] = useState(false);
+  const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
 
   // Animated scroll and search visibility state
   const scrollY = useRef(new Animated.Value(0)).current;
@@ -55,7 +57,7 @@ function RankingsScreen() {
   const [searchVisible, setSearchVisible] = useState(false);
 
   // Constant collapsible header height to maximize player density
-  const HEADER_MAX_HEIGHT = 138;
+  const HEADER_MAX_HEIGHT = 96;
   const clampedScrollY = Animated.diffClamp(scrollY, 0, HEADER_MAX_HEIGHT);
   const headerTranslateY = clampedScrollY.interpolate({
     inputRange: [0, HEADER_MAX_HEIGHT],
@@ -63,6 +65,27 @@ function RankingsScreen() {
     extrapolate: 'clamp',
   });
   const headerMaxHeight = HEADER_MAX_HEIGHT;
+
+  const [tabBarVisible, setTabBarVisible] = useState(true);
+  const scrollTimeoutRef = useRef<any>(null);
+
+  const handleScroll = useCallback(() => {
+    setTabBarVisible(false);
+    if (scrollTimeoutRef.current) {
+      clearTimeout(scrollTimeoutRef.current);
+    }
+    scrollTimeoutRef.current = setTimeout(() => {
+      setTabBarVisible(true);
+    }, 300); // Reappear elegantly after 300ms of inactivity
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (scrollTimeoutRef.current) {
+        clearTimeout(scrollTimeoutRef.current);
+      }
+    };
+  }, []);
 
   const handleBack = () => {
     router.back();
@@ -110,6 +133,26 @@ function RankingsScreen() {
     });
   }, [activeBoardPlayers, positionFilter, searchQuery]);
 
+  const handleNextPlayer = useCallback(() => {
+    if (!selectedPlayer || filteredConsensusPlayers.length === 0) return;
+    const currentIndex = filteredConsensusPlayers.findIndex(p => p.name === selectedPlayer.name);
+    if (currentIndex !== -1) {
+      const nextIndex = (currentIndex + 1) % filteredConsensusPlayers.length;
+      triggerHaptic(Haptics.ImpactFeedbackStyle.Light);
+      setSelectedPlayer(filteredConsensusPlayers[nextIndex]);
+    }
+  }, [selectedPlayer, filteredConsensusPlayers]);
+
+  const handlePrevPlayer = useCallback(() => {
+    if (!selectedPlayer || filteredConsensusPlayers.length === 0) return;
+    const currentIndex = filteredConsensusPlayers.findIndex(p => p.name === selectedPlayer.name);
+    if (currentIndex !== -1) {
+      const prevIndex = (currentIndex - 1 + filteredConsensusPlayers.length) % filteredConsensusPlayers.length;
+      triggerHaptic(Haptics.ImpactFeedbackStyle.Light);
+      setSelectedPlayer(filteredConsensusPlayers[prevIndex]);
+    }
+  }, [selectedPlayer, filteredConsensusPlayers]);
+
   const renderPlayerRow = useCallback(({ item, index }: { item: Player; index: number }) => {
     const isDrafted = item.draftedBy !== null;
 
@@ -149,6 +192,7 @@ function RankingsScreen() {
         panHandlers={null}
         dragY={dummyDragY}
         onAddPlayer={() => {}}
+        onPlayerPress={setSelectedPlayer}
         Colors={Colors}
         styles={activeStyles}
       />
@@ -185,7 +229,7 @@ function RankingsScreen() {
 
   return (
     <View style={activeStyles.container}>
-      <BackgroundTexture />
+      <BackgroundTexture backgroundColor={Colors.primaryAccent} />
       <SafeAreaView style={activeStyles.safeArea} edges={['top', 'bottom']}>
         
         {/* ABSOLUTE COLLAPSIBLE HEADER CONTAINER */}
@@ -207,23 +251,23 @@ function RankingsScreen() {
               <View style={[
                 activeStyles.inlineSearchWrapper,
                 {
-                  borderColor: isFocused ? Colors.primaryAccent : Colors.secondaryAccent,
-                  backgroundColor: isFocused ? 'rgba(255, 255, 255, 0.04)' : 'transparent',
+                  borderColor: isFocused ? Colors.pylonOrange : Colors.chromeSilver,
+                  backgroundColor: '#FFFFFF',
                 }
               ]}>
                 <Svg width={14} height={14} viewBox="0 0 24 24" fill="none" style={activeStyles.inlineSearchIcon}>
-                  <Circle cx={11} cy={11} r={8} stroke={isFocused ? Colors.primaryAccent : Colors.secondaryAccent} strokeWidth={2.5} />
-                  <Path d="M21 21L16.65 16.65" stroke={isFocused ? Colors.primaryAccent : Colors.secondaryAccent} strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" />
+                  <Circle cx={11} cy={11} r={8} stroke={isFocused ? Colors.pylonOrange : Colors.obsidianBlack} strokeWidth={2.5} />
+                  <Path d="M21 21L16.65 16.65" stroke={isFocused ? Colors.pylonOrange : Colors.obsidianBlack} strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" />
                 </Svg>
                 <TextInput
                   style={[
                     activeStyles.inlineSearchInput,
                     {
-                      color: Colors.primaryAccent,
+                      color: Colors.obsidianBlack,
                     }
                   ]}
                   placeholder="Search players..."
-                  placeholderTextColor={Colors.secondaryAccent}
+                  placeholderTextColor="rgba(12, 12, 12, 0.4)"
                   value={searchQuery}
                   onChangeText={setSearchQuery}
                   autoFocus={true}
@@ -240,7 +284,7 @@ function RankingsScreen() {
                     }} 
                     style={activeStyles.inlineClearBtn}
                   >
-                    <Text style={{color: Colors.secondaryAccent, fontSize: 11, fontWeight: '900'}}>✕</Text>
+                    <Text style={{color: Colors.obsidianBlack, fontSize: 11, fontWeight: '900'}}>✕</Text>
                   </Pressable>
                 )}
                 <Pressable 
@@ -270,8 +314,8 @@ function RankingsScreen() {
                   }}
                 >
                   <Svg width={14} height={14} viewBox="0 0 24 24" fill="none">
-                    <Circle cx={11} cy={11} r={8} stroke={Colors.secondaryAccent} strokeWidth={2.5} />
-                    <Path d="M21 21L16.65 16.65" stroke={Colors.secondaryAccent} strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" />
+                    <Circle cx={11} cy={11} r={8} stroke={Colors.obsidianBlack} strokeWidth={2.5} />
+                    <Path d="M21 21L16.65 16.65" stroke={Colors.obsidianBlack} strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" />
                   </Svg>
                 </Pressable>
 
@@ -308,7 +352,7 @@ function RankingsScreen() {
             right: 0,
             zIndex: 99,
             transform: [{ translateY: headerTranslateY }],
-            backgroundColor: Colors.background,
+            backgroundColor: Colors.primaryAccent,
             marginTop: 0,
             paddingBottom: 8,
           }
@@ -334,6 +378,8 @@ function RankingsScreen() {
             scrollY={scrollY}
             headerTranslateY={headerTranslateY}
             headerMaxHeight={headerMaxHeight}
+            onScrollAction={handleScroll}
+            onPlayerPress={setSelectedPlayer}
           />
         ) : (
           <FlatList
@@ -341,11 +387,16 @@ function RankingsScreen() {
             renderItem={renderPlayerRow}
             ListHeaderComponent={renderListHeader}
             keyExtractor={(item) => `consensus-${item.name}`}
-            contentContainerStyle={[activeStyles.listContent, { paddingTop: headerMaxHeight + 72 }]}
+            contentContainerStyle={[activeStyles.listContent, { paddingTop: headerMaxHeight + 38 }]}
             showsVerticalScrollIndicator={false}
             onScroll={Animated.event(
               [{ nativeEvent: { contentOffset: { y: scrollY } } }],
-              { useNativeDriver: true }
+              { 
+                useNativeDriver: true,
+                listener: () => {
+                  handleScroll();
+                }
+              }
             )}
             scrollEventThrottle={16}
             ListEmptyComponent={
@@ -359,7 +410,32 @@ function RankingsScreen() {
         )}
         
       </SafeAreaView>
-      <AppTabBar />
+      <AppTabBar visible={tabBarVisible} />
+
+      {/* Sleeper-Style Player Card Modal */}
+      {(() => {
+        let nextPlayer: any = null;
+        let prevPlayer: any = null;
+        if (selectedPlayer && filteredConsensusPlayers.length > 0) {
+          const currentIndex = filteredConsensusPlayers.findIndex(p => p.name === selectedPlayer.name);
+          if (currentIndex !== -1) {
+            const nextIndex = (currentIndex + 1) % filteredConsensusPlayers.length;
+            const prevIndex = (currentIndex - 1 + filteredConsensusPlayers.length) % filteredConsensusPlayers.length;
+            nextPlayer = filteredConsensusPlayers[nextIndex];
+            prevPlayer = filteredConsensusPlayers[prevIndex];
+          }
+        }
+        return (
+          <PlayerCardModal 
+            player={selectedPlayer} 
+            nextPlayer={nextPlayer}
+            prevPlayer={prevPlayer}
+            onClose={() => setSelectedPlayer(null)} 
+            onNextPlayer={handleNextPlayer}
+            onPrevPlayer={handlePrevPlayer}
+          />
+        );
+      })()}
     </View>
   );
 }

@@ -262,7 +262,7 @@ export default function OnboardingScreen() {
 
             {isSocialLoading === 'google' ? (
               <View style={[styles.socialButton, styles.googleButton]}>
-                <ActivityIndicator color="#040b1f" size="small" />
+                <ActivityIndicator color={Colors.obsidianBlack} size="small" />
               </View>
             ) : (
               <Pressable 
@@ -281,7 +281,7 @@ export default function OnboardingScreen() {
                   <Path d="M11 29.2c-.5-1.5-.8-3.1-.8-4.7s.3-3.2.8-4.7V15l-6.1-4.7C3.3 13.9 2 18.8 2 24s1.3 10.1 2.9 13.7l6.1-4.7z" fill="#FBBC05" />
                   <Path d="M24 10.2c3.2 0 6.1 1.1 8.4 3.2l6.3-6.3C34.9 3.8 29.8 2 24 2 15.9 2 8.7 6.5 4.9 14l6.1 4.7c1.8-5.5 6.9-9.5 13-9.5z" fill="#EB4335" />
                 </Svg>
-                <Text style={[styles.socialBtnText, { color: '#040b1f' }]}>Continue with Google</Text>
+                <Text style={[styles.socialBtnText, { color: '#0c0c0c' }]}>Continue with Google</Text>
               </Pressable>
             )}
           </View>
@@ -328,7 +328,7 @@ export default function OnboardingScreen() {
                       styles.badgeText, 
                       isEmailRegistered ? { color: Colors.hofYellow } : { color: '#22C55E' }
                     ]}>
-                      {isEmailRegistered ? '🔑 RETURNING COACH DETECTED' : '🏈 NEW COACH CREATION'}
+                      {isEmailRegistered ? 'RETURNING COACH DETECTED' : 'NEW COACH CREATION'}
                     </Text>
                   </View>
 
@@ -345,7 +345,7 @@ export default function OnboardingScreen() {
                           }}
                         >
                           <Text style={styles.forgotPasswordLinkText}>
-                            FORGOT PASSWORD? 📲
+                            FORGOT PASSWORD?
                           </Text>
                         </Pressable>
                       )}
@@ -491,7 +491,7 @@ export default function OnboardingScreen() {
 
         {/* Premium visual warning footer */}
         <View style={styles.onboardingFooter}>
-          <Text style={styles.footerNoteText}>🔒 Your credentials are stored locally inside your device cache.</Text>
+          <Text style={styles.footerNoteText}>Your credentials are stored locally inside your device cache.</Text>
           <Text style={styles.footerVersionText}>MOCKMAXXING DEPLOYED MVP V2.0 • EXPERT DESIGN</Text>
         </View>
       </ScrollView>

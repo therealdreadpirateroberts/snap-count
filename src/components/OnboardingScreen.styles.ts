@@ -4,7 +4,7 @@ import { Colors, Fonts, Spacing } from '@/constants/theme';
 export const styles = StyleSheet.create({
   keyboardContainer: {
     flex: 1,
-    backgroundColor: Colors.background,
+    backgroundColor: Colors.obsidianBlack,
   },
   scrollContent: {
     paddingHorizontal: Spacing.three,
@@ -52,7 +52,7 @@ export const styles = StyleSheet.create({
   },
   showcaseCard: {
     backgroundColor: 'rgba(24, 24, 27, 0.45)',
-    borderColor: Colors.coltsNavyLight,
+    borderColor: Colors.chromeSilver,
     borderWidth: 1,
     borderRadius: 12,
     padding: Spacing.three,
@@ -70,8 +70,8 @@ export const styles = StyleSheet.create({
     width: 60,
     height: 60,
     borderRadius: 30,
-    backgroundColor: Colors.surface,
-    borderColor: Colors.coltsNavyLight,
+    backgroundColor: Colors.deepGraphiteCharcoal,
+    borderColor: Colors.chromeSilver,
     borderWidth: 1,
     justifyContent: 'center',
     alignItems: 'center',
@@ -249,8 +249,8 @@ export const styles = StyleSheet.create({
   preferenceChip: {
     paddingVertical: 8,
     paddingHorizontal: 14,
-    backgroundColor: Colors.surface,
-    borderColor: Colors.coltsNavyLight,
+    backgroundColor: Colors.deepGraphiteCharcoal,
+    borderColor: Colors.chromeSilver,
     borderWidth: 1,
     borderRadius: 20,
   },
@@ -288,8 +288,8 @@ export const styles = StyleSheet.create({
   selectorCell: {
     width: 44,
     height: 44,
-    backgroundColor: Colors.surface,
-    borderColor: Colors.coltsNavyLight,
+    backgroundColor: Colors.deepGraphiteCharcoal,
+    borderColor: Colors.chromeSilver,
     borderWidth: 1,
     borderRadius: 6,
     justifyContent: 'center',
@@ -319,12 +319,12 @@ export const styles = StyleSheet.create({
     marginTop: Spacing.two,
   },
   ctaLogin: {
-    backgroundColor: Colors.surfaceLifted,
+    backgroundColor: Colors.liftedCharcoal,
     borderWidth: 1.5,
     borderColor: Colors.hofYellow,
   },
   ctaRegister: {
-    backgroundColor: Colors.coltsNavy,
+    backgroundColor: Colors.deepFieldGreen,
     borderWidth: 1,
     borderColor: 'rgba(224, 49, 34, 0.8)',
   },
@@ -385,7 +385,7 @@ export const styles = StyleSheet.create({
     width: '100%',
     maxWidth: 420,
     backgroundColor: 'rgba(24, 24, 27, 0.45)',
-    borderColor: Colors.coltsNavyLight,
+    borderColor: Colors.chromeSilver,
     borderWidth: 1,
     borderRadius: 12,
     padding: Spacing.three,
@@ -417,7 +417,7 @@ export const styles = StyleSheet.create({
     borderWidth: 1,
   },
   socialFormConfirmBtn: {
-    backgroundColor: Colors.coltsNavy,
+    backgroundColor: Colors.deepFieldGreen,
     borderColor: 'rgba(224, 49, 34, 0.8)',
     borderWidth: 1,
   },
@@ -535,7 +535,7 @@ export const styles = StyleSheet.create({
     borderWidth: 1,
   },
   modalBtnPrimary: {
-    backgroundColor: Colors.coltsNavy,
+    backgroundColor: Colors.deepFieldGreen,
     borderColor: 'rgba(224, 49, 34, 0.8)',
     borderWidth: 1,
     flex: 1,

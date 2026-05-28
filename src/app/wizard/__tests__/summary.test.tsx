@@ -94,7 +94,7 @@ describe('DraftSummaryScreen Smoke Test', () => {
         {
           id: 'draft_1',
           timestamp: Date.now(),
-          grade: 'A',
+          grade: '10',
           valueScore: 95,
           playoffChance: 90,
           projectedWins: 10,
@@ -115,7 +115,7 @@ describe('DraftSummaryScreen Smoke Test', () => {
               wins: 10,
               losses: 4,
               playoffChance: 90,
-              grade: 'A',
+              grade: '10',
               strategyCamp: 'Hero RB',
               expertPreference: 'ECR Consensus',
               roster: []
